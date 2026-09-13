@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cognitive Care Companion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-card">
+    <header>
+      <span class="region-badge">NER Cognitive Assistance</span>
+      <h1>Memory Match</h1>
+      <p class="medical-disclaimer" style="font-size: 0.85rem; color: #666; margin: 4px 0 12px;">
+  ⚠️ <em>Assistive cognitive stimulation prototype. Not intended for clinical diagnosis or medical evaluation.</em>
+</p>
+      <button id="voice-help-btn" class="speak-btn">🔊 Hear Instructions</button>
+    </header>
+
+    <div class="instructions-box">
+      <p id="system-status">Tap any two cards to reveal and pair familiar items.</p>
+    </div>
+
+    <!-- 2x4 Game Board -->
+    <main class="grid-board" id="game-grid"></main>
+
+    <!-- Companion AI Feedback Block -->
+    <section class="ai-banner" id="ai-banner">
+      <strong>AI Companion:</strong>
+      <p id="ai-text">Welcome! Tap a tile whenever you are ready to begin.</p>
+    </section>
+
+    <div class="nav-controls">
+      <button id="reset-btn" class="main-action">Restart Activity</button>
+      <button id="toggle-caregiver-btn" class="sub-action">Caregiver View</button>
+    </div>
+
+    <!-- Caregiver Monitoring Panel -->
+    <section id="caregiver-panel" class="caregiver-section hidden">
+      <h2>Caregiver Insights & AI Clinical Notes</h2>
+      <div id="analytics-feed">No data yet. Complete an activity to view insights.</div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
