@@ -12,6 +12,7 @@ MindBridge is a Supabase-backed cognitive care dashboard with email/password aut
 PORT=5000
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-or-publishable-key
+APP_URL=http://localhost:5000
 ```
 
 4. Add email alerts if you want `/api/notify-caregiver` to send email:
@@ -29,6 +30,8 @@ npm start
 ```
 
 Open http://localhost:5000. Create an account with a real email address, confirm it if Supabase email confirmation is enabled, then sign in with that email and password. The phone number is optional contact information only.
+
+In Supabase, add `http://localhost:5000/index.html?confirmed=1` under Authentication -> URL Configuration -> Redirect URLs. For a deployed app, set `APP_URL` to the deployed HTTPS URL and add its `/index.html?confirmed=1` callback there too.
 
 ## Security
 

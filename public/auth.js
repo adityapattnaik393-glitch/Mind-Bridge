@@ -15,6 +15,10 @@
   var submitBtn = document.getElementById("submitBtn");
   var forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
 
+  if (new URLSearchParams(window.location.search).get("confirmed") === "1") {
+    say("Email confirmed. You can sign in now.", true);
+  }
+
   function say(text, isGood) {
     message.textContent = text || "";
     message.classList.toggle("ok", Boolean(isGood));

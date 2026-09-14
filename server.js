@@ -70,6 +70,11 @@ function normaliseEmail(input) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
+function appUrl(req) {
+    const configured = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    return configured.replace(/\/$/, "");
+}
+
 function normaliseMobile(input) {
     const digits = String(input || "").replace(/\D/g, "");
     const trimmed = digits.length === 12 && digits.startsWith("91") ? digits.slice(2)
@@ -214,6 +219,7 @@ app.post("/api/auth/signup", async (req, res) => {
         email: normalisedEmail,
         password,
         options: {
+            emailRedirectTo: `${appUrl(req)}/index.html?confirmed=1`,
             data: {
                 caretaker_name: caretakerName.trim(),
                 patient_name: patientName.trim(),

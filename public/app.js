@@ -33,6 +33,22 @@
     }
   };
 
+  /* Supabase puts the confirmed session in the URL hash after email signup. */
+  function consumeAuthRedirect() {
+    var params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    var accessToken = params.get("access_token");
+    if (!accessToken) return;
+
+    session.save({
+      access_token: accessToken,
+      refresh_token: params.get("refresh_token") || ""
+    });
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    window.location.replace("patient.html");
+  }
+
+  consumeAuthRedirect();
+
   function url(path) {
     return API_BASE + path;
   }
