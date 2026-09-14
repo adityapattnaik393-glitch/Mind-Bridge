@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in | MindBridge</title>
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="brand">
+        <div class="mark">✦</div>
+        <div><h1>MindBridge</h1><p>Cognitive Care Companion</p></div>
+      </div>
+      <h2>Welcome back</h2>
+      <p class="auth-copy">Sign in to continue to your cognitive care dashboard.</p>
+      <form class="auth-form" id="authForm">
+        <label>Email<input id="authEmail" type="email" autocomplete="email" required></label>
+        <label>Password<input id="authPassword" type="password" autocomplete="current-password" required></label>
+        <p class="auth-error" id="authError" role="alert"></p>
+        <button class="btn" id="authSubmit" type="submit">Sign in</button>
+      </form>
+      <p class="auth-switch">New to MindBridge? <a href="create-account.html">Create account</a></p>
+    </section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>

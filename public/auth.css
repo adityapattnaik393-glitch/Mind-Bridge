@@ -1,0 +1,74 @@
+:root {
+  --bg: #F4F2EC;
+  --card: #FFFFFF;
+  --ink: #1D2521;
+  --ink-soft: #5B6560;
+  --teal-700: #155249;
+  --teal-800: #12403C;
+  --teal-500: #1E7A6C;
+  --line: #E7E3D9;
+  --shadow: 0 1px 2px rgba(20,30,26,0.04), 0 6px 20px rgba(20,30,26,0.05);
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; margin: 0; }
+body {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top left, #E4F0EC 0, var(--bg) 42%, #EEE9DE 100%);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+}
+.auth-shell { width: min(100%, 430px); }
+.auth-card {
+  padding: 34px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand .mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, var(--teal-500), var(--teal-800));
+  color: #fff;
+  font-size: 22px;
+}
+.brand h1 { margin: 0; font-size: 21px; letter-spacing: .2px; }
+.brand p { margin: 1px 0 0; color: var(--ink-soft); font: 12.5px/1.4 Arial, sans-serif; }
+.auth-card h2 { margin: 0 0 8px; font-size: 30px; }
+.auth-copy { margin: 0 0 24px; color: var(--ink-soft); font: 14px/1.5 Arial, sans-serif; }
+.auth-form { display: grid; gap: 14px; }
+.auth-form label { display: grid; gap: 7px; color: var(--ink-soft); font: 600 12px Arial, sans-serif; }
+.auth-form input {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #D9D5CA;
+  border-radius: 10px;
+  background: #FCFBF8;
+  color: var(--ink);
+  font: 15px Arial, sans-serif;
+}
+.auth-form input:focus { outline: 3px solid rgba(30,122,108,.16); border-color: var(--teal-500); }
+.auth-error { min-height: 18px; margin: 0; color: #B3453A; font: 13px Arial, sans-serif; }
+.btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--teal-700);
+  color: #fff;
+  cursor: pointer;
+  font: 700 13.5px Arial, sans-serif;
+}
+.btn:hover { background: var(--teal-800); }
+.btn:disabled { cursor: wait; opacity: .65; }
+.auth-switch { margin: 18px 0 0; text-align: center; color: var(--ink-soft); font: 13px Arial, sans-serif; }
+.auth-switch a { color: var(--teal-700); font-weight: 700; }
+@media (max-width: 480px) { .auth-card { padding: 26px 22px; } }

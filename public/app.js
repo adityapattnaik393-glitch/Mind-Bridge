@@ -3,7 +3,9 @@ const API_BASE_URL = window.location.port === "5000"
   : `${window.location.protocol}//${window.location.hostname}:5000`;
 
 let patient = null;
-let authMode = "login";
+const page = window.location.pathname.split("/").pop() || "index.html";
+const isAuthPage = page === "index.html" || page === "create-account.html";
+const authMode = page === "create-account.html" ? "signup" : "login";
 
 function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
@@ -33,16 +35,6 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
-function showDashboard() {
-  document.getElementById("authShell")?.classList.add("is-hidden");
-  document.getElementById("dashboardApp")?.classList.remove("is-hidden");
-}
-
-function showAuth() {
-  document.getElementById("authShell")?.classList.remove("is-hidden");
-  document.getElementById("dashboardApp")?.classList.add("is-hidden");
-}
-
 function updateAuthMode() {
   const signup = authMode === "signup";
   setText("authTitle", signup ? "Create your account" : "Welcome back");
@@ -50,9 +42,7 @@ function updateAuthMode() {
   setText("authSubmit", signup ? "Create account" : "Sign in");
   setText("authSwitchText", signup ? "Already have an account?" : "New to MindBridge?");
   setText("authSwitch", signup ? "Sign in" : "Create account");
-  document.getElementById("nameField")?.classList.toggle("is-hidden", !signup);
   document.getElementById("authPassword")?.setAttribute("autocomplete", signup ? "new-password" : "current-password");
-  setAuthMessage();
 }
 
 async function loadPatient() {
@@ -118,9 +108,7 @@ async function signInOrSignUp(event) {
       return;
     }
     localStorage.setItem("mindbridge_access_token", data.session.access_token);
-    showDashboard();
-    await loadPatient();
-    await loadScores();
+    window.location.href = "patient.html";
   } catch (error) {
     setAuthMessage(error.message);
   } finally {
@@ -129,30 +117,32 @@ async function signInOrSignUp(event) {
 }
 
 async function initializeApp() {
-  document.getElementById("authForm")?.addEventListener("submit", signInOrSignUp);
-  document.getElementById("authSwitch")?.addEventListener("click", () => {
-    authMode = authMode === "login" ? "signup" : "login";
+  if (isAuthPage) {
+    if (getToken()) {
+      window.location.href = "patient.html";
+      return;
+    }
+    document.getElementById("authForm")?.addEventListener("submit", signInOrSignUp);
     updateAuthMode();
-  });
+    return;
+  }
+
   document.getElementById("logoutBtn")?.addEventListener("click", () => {
     localStorage.removeItem("mindbridge_access_token");
-    patient = null;
-    showAuth();
-    authMode = "login";
-    updateAuthMode();
+    window.location.href = "index.html";
   });
 
-  updateAuthMode();
-  if (!getToken()) return;
+  if (!getToken()) {
+    window.location.href = "index.html";
+    return;
+  }
 
   try {
-    showDashboard();
     await loadPatient();
     await loadScores();
   } catch (error) {
     localStorage.removeItem("mindbridge_access_token");
-    showAuth();
-    setAuthMessage(error.message);
+    window.location.href = "index.html";
   }
 }
 
