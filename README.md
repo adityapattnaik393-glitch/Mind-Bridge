@@ -25,7 +25,7 @@ Open http://localhost:5000. Create an account, confirm the email if Supabase ema
 
 ## Security
 
-Only the Supabase URL and publishable/anon key belong in this app configuration. Never put a Supabase service-role key, Gemini key, JWT secret, or database password in the browser or commit them to Git. If a secret has been exposed, rotate it in the provider dashboard immediately.
+The backend may use `SUPABASE_SECRET_KEY` for server-side requests. Never put that key, a Supabase service-role key, Gemini key, JWT secret, or database password in browser code or commit them to Git. If a secret has been exposed, rotate it in the provider dashboard immediately. A publishable/anon key is only needed for a browser-side Supabase client, which this app does not use.
 
 The backend verifies the Supabase access token before reading or writing patient data, scores, or caregiver alerts. Row-level security in [supabase/schema.sql](supabase/schema.sql) adds a second ownership boundary inside Supabase.
 # proxy-blocker-all-folders
