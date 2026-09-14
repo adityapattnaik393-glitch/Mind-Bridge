@@ -587,6 +587,7 @@ app.use((req, res) => {
 app.listen(port, () => {
     console.log(`MindBridge running at http://localhost:${port}`);
     if (!supabase) console.warn("⚠  Supabase is not configured — add SUPABASE_URL and a key to .env");
+    console.log(`Supabase configured: ${supabase ? "yes" : "no"}`);
 });
 
 module.exports = app;
