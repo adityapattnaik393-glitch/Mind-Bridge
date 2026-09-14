@@ -4,7 +4,7 @@
 -- "if not exists" / "or replace", so your existing `patients` table survives).
 --
 -- Workflow it supports:
---   caretaker creates an account (caretaker name, patient name, mobile,
+--   caretaker creates an account (caretaker name, patient name, email,
 --   password, language) -> signs in -> patient dashboard (games) and
 --   caretaker dashboard (daily + overall progress) read the same rows.
 -- ============================================================================
@@ -29,10 +29,7 @@ alter table public.patients add column if not exists caretaker_mobile  text;
 alter table public.patients add column if not exists language_code     text default 'en';
 alter table public.patients add column if not exists updated_at        timestamptz not null default now();
 
--- One mobile number = one account.
-create unique index if not exists patients_caretaker_mobile_key
-  on public.patients (caretaker_mobile)
-  where caretaker_mobile is not null;
+drop index if exists public.patients_caretaker_mobile_key;
 
 create index if not exists patients_user_id_idx on public.patients (user_id);
 

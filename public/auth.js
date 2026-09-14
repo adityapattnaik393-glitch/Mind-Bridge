@@ -13,6 +13,7 @@
   var signUpForm = document.getElementById("signUpForm");
   var message = document.getElementById("formMessage");
   var submitBtn = document.getElementById("submitBtn");
+  var forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
 
   function say(text, isGood) {
     message.textContent = text || "";
@@ -32,6 +33,14 @@
   function value(id) {
     var field = document.getElementById(id);
     return field ? field.value.trim() : "";
+  }
+
+  function normaliseEmail(raw) {
+    return String(raw || "").trim().toLowerCase();
+  }
+
+  function validEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
   /** Digits only; drops a 91 country code or a leading 0. */
@@ -59,18 +68,40 @@
 
   /* ------------------------------------------------------------- sign in */
   if (signInForm) {
+    if (forgotPasswordBtn) {
+      forgotPasswordBtn.addEventListener("click", async function () {
+        var email = normaliseEmail(value("email"));
+        if (!validEmail(email)) {
+          markInvalid("email", true);
+          return say("Enter your email first, then choose forgot password.");
+        }
+        forgotPasswordBtn.disabled = true;
+        try {
+          var reset = await MB.publicApi("/api/auth/forgot-password", {
+            method: "POST",
+            body: JSON.stringify({ email: email })
+          });
+          say(reset.message, true);
+        } catch (error) {
+          say(error.message);
+        } finally {
+          forgotPasswordBtn.disabled = false;
+        }
+      });
+    }
+
     signInForm.addEventListener("submit", async function (event) {
       event.preventDefault();
 
-      var mobile = normaliseMobile(value("mobile"));
+      var email = normaliseEmail(value("email"));
       var password = document.getElementById("password").value;
 
-      markInvalid("mobile", false);
+      markInvalid("email", false);
       markInvalid("password", false);
 
-      if (!validMobile(mobile)) {
-        markInvalid("mobile", true);
-        return say("Enter the 10-digit mobile number used at sign-up.");
+      if (!validEmail(email)) {
+        markInvalid("email", true);
+        return say("Enter a valid email address.");
       }
       if (!password) {
         markInvalid("password", true);
@@ -83,7 +114,7 @@
       try {
         var data = await MB.publicApi("/api/auth/login", {
           method: "POST",
-          body: JSON.stringify({ mobile: mobile, password: password })
+          body: JSON.stringify({ email: email, password: password })
         });
         MB.session.save(data.session);
         window.location.href = "patient.html";
@@ -101,6 +132,7 @@
 
       var caretakerName = value("caretakerName");
       var patientName = value("patientName");
+      var email = normaliseEmail(value("email"));
       var mobile = normaliseMobile(value("mobile"));
       var languageCode = value("languageCode") || "en";
       var age = value("age");
@@ -108,7 +140,7 @@
       var password = document.getElementById("password").value;
       var confirmPassword = document.getElementById("confirmPassword").value;
 
-      ["caretakerName", "patientName", "mobile", "password", "confirmPassword"]
+      ["caretakerName", "patientName", "email", "mobile", "password", "confirmPassword"]
         .forEach(function (id) { markInvalid(id, false); });
 
       if (!caretakerName) {
@@ -119,9 +151,9 @@
         markInvalid("patientName", true);
         return say("Please enter the patient's name.");
       }
-      if (!validMobile(mobile)) {
-        markInvalid("mobile", true);
-        return say("Enter a valid 10-digit mobile number.");
+      if (!validEmail(email)) {
+        markInvalid("email", true);
+        return say("Enter a valid email address.");
       }
       if (password.length < 6) {
         markInvalid("password", true);
@@ -141,30 +173,38 @@
           body: JSON.stringify({
             caretakerName: caretakerName,
             patientName: patientName,
-            mobile: mobile,
+            email: email,
+            mobile: mobile || undefined,
             password: password,
             languageCode: languageCode,
             age: age || undefined,
             region: region || undefined
           })
         });
+        if (!data.session) {
+          say(data.message || "Account created. Check your email, then sign in.", true);
+          busy(false, "Create account");
+          return;
+        }
         MB.session.save(data.session);
         say("Account created. Opening the dashboard…", true);
         setTimeout(function () {
           window.location.href = "patient.html";
         }, 1000);
       } catch (error) {
+        say(error.message);
+        if (error.status === 409) markInvalid("email", true);
         busy(false, "Create account");
         switch (error.status) {
           case 409:
-            markInvalid("mobile", true);
-            say("This mobile number already has an account. Please sign in instead.");
+            markInvalid("email", true);
+            say("This email already has an account. Please sign in instead.");
             break;
           case 503:
             say("Service temporarily unavailable. Please try again later.");
             break;
           case 400:
-            if (error.message.indexOf("mobile") !== -1) markInvalid("mobile", true);
+            if (error.message.indexOf("email") !== -1) markInvalid("email", true);
             if (error.message.indexOf("name") !== -1) markInvalid("caretakerName", true);
             if (error.message.indexOf("password") !== -1) markInvalid("password", true);
             say(error.message);

@@ -44,13 +44,15 @@
         </label>
 
         <label>
-          Caretaker's mobile number
-          <span class="mobile-input">
-            <span class="prefix">+91</span>
-            <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel"
-                   maxlength="15" placeholder="98765 43210" required>
-          </span>
-          <span class="field-hint">This number is how you sign in.</span>
+          Caretaker's email
+          <input id="email" type="email" autocomplete="email" placeholder="caretaker@example.com" required>
+          <span class="field-hint">Used for sign-in and caregiver alerts.</span>
+        </label>
+
+        <label>
+          Caretaker's phone number <span class="field-hint">— optional contact number</span>
+          <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel"
+                 maxlength="15" placeholder="98765 43210">
         </label>
 
         <label>

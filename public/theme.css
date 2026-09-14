@@ -335,6 +335,7 @@ table.data td.strong { font-weight: 700; }
   border-radius: 10px 0 0 10px; font-family: var(--sans); font-size: 14px; color: var(--ink-soft);
 }
 .mobile-input input { border-radius: 0 10px 10px 0; }
+.text-button { border: 0; padding: 0; background: transparent; color: var(--accent, #9a6b2f); cursor: pointer; text-align: left; }
 .auth-note {
   margin: 0; padding: 11px 13px; border-radius: 10px;
   background: var(--teal-100); color: var(--teal-700);

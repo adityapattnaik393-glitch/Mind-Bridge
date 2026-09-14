@@ -1,19 +1,17 @@
 /* ============================================================================
  * MindBridge — server
  *
- * Auth model: the caretaker signs up and signs in with a MOBILE NUMBER.
- * Supabase Auth uses the caretaker's mobile number directly. The browser never
- * asks for or stores an email address.
+ * Auth model: the caretaker signs up and signs in with an email address.
  *
- * IMPORTANT Supabase setting: Authentication -> Sign In / Providers -> Phone
- * must be enabled, with phone confirmation disabled for password-only login.
+ * Supabase Email confirmation may remain enabled. In that mode signup returns
+ * a confirmation message and the caretaker signs in after clicking the link.
  * ==========================================================================*/
 
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
-const sendSms = require("./utils/sms");
+const sendEmail = require("./public/utils/email");
 
 const envPath = path.resolve(__dirname, ".env");
 if (fs.existsSync(envPath)) {
@@ -67,20 +65,17 @@ function languageByCode(code) {
     return SUPPORTED_LANGUAGES.find((item) => item.code === code) || SUPPORTED_LANGUAGES[0];
 }
 
-/** Strip formatting and return a plain digit string, or null if implausible. */
+function normaliseEmail(input) {
+    const email = String(input || "").trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
 function normaliseMobile(input) {
     const digits = String(input || "").replace(/\D/g, "");
     const trimmed = digits.length === 12 && digits.startsWith("91") ? digits.slice(2)
         : digits.length === 11 && digits.startsWith("0") ? digits.slice(1)
         : digits;
-    if (trimmed.length < 10 || trimmed.length > 15) return null;
-    return trimmed;
-}
-
-function mobileToPhone(mobile) {
-    const normalised = normaliseMobile(mobile);
-    if (!normalised) throw new Error("A valid caretaker mobile number is required for SMS alerts.");
-    return `+91${normalised}`;
+    return trimmed.length >= 10 && trimmed.length <= 15 ? trimmed : "";
 }
 
 function requireSupabase(res) {
@@ -199,28 +194,30 @@ app.get("/api/config", (req, res) => {
 app.post("/api/auth/signup", async (req, res) => {
     if (!requireSupabase(res)) return;
     const {
-        caretakerName, patientName, mobile, password,
+        caretakerName, patientName, email, mobile, password,
         languageCode = "en", age, region
     } = req.body || {};
 
     if (!caretakerName?.trim())  return res.status(400).json({ error: "Caretaker name is required." });
     if (!patientName?.trim())    return res.status(400).json({ error: "Patient name is required." });
 
-    const normalised = normaliseMobile(mobile);
-    if (!normalised) return res.status(400).json({ error: "Enter a valid mobile number (10 digits)." });
+    const normalisedEmail = normaliseEmail(email);
+    if (!normalisedEmail) return res.status(400).json({ error: "Enter a valid email address." });
     if (!password || password.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters." });
     }
 
     const language = languageByCode(languageCode);
+    const normalisedMobileNumber = normaliseMobile(mobile);
+
     const { data, error } = await supabase.auth.signUp({
-        phone: mobileToPhone(normalised),
+        email: normalisedEmail,
         password,
         options: {
             data: {
                 caretaker_name: caretakerName.trim(),
                 patient_name: patientName.trim(),
-                mobile: normalised,
+                mobile: normalisedMobileNumber,
                 preferred_language: language.label,
                 language_code: language.code,
                 age: Number(age) || 72,
@@ -233,19 +230,20 @@ app.post("/api/auth/signup", async (req, res) => {
         const alreadyExists = /already registered|already exists|User already/i.test(error.message);
         return res.status(alreadyExists ? 409 : 400).json({
             error: alreadyExists
-                ? "This mobile number already has an account. Please sign in instead."
+                ? "This email already has an account. Please sign in instead."
                 : error.message
         });
     }
 
     /* Supabase hides duplicates by returning a user with no identities. */
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        return res.status(409).json({ error: "This mobile number already has an account. Please sign in instead." });
+        return res.status(409).json({ error: "This email already has an account. Please sign in instead." });
     }
 
     if (!data.session) {
-        return res.status(400).json({
-            error: "Account created, but phone confirmation is switched on in Supabase. Turn off Authentication -> Providers -> Phone -> 'Confirm phone', then sign in."
+        return res.status(201).json({
+            requiresEmailConfirmation: true,
+            message: "Account created. Check your email to confirm your account, then sign in."
         });
     }
 
@@ -255,7 +253,7 @@ app.post("/api/auth/signup", async (req, res) => {
         user_id: data.user.id,
         name: patientName.trim(),
         caretaker_name: caretakerName.trim(),
-        caretaker_mobile: normalised,
+        caretaker_mobile: normalisedMobileNumber || null,
         preferred_language: language.label,
         language_code: language.code,
         age: Number(age) || 72,
@@ -269,14 +267,14 @@ app.post("/api/auth/signup", async (req, res) => {
 /* ---- sign in -------------------------------------------------------------*/
 app.post("/api/auth/login", async (req, res) => {
     if (!requireSupabase(res)) return;
-    const { mobile, password } = req.body || {};
+    const { email, password } = req.body || {};
 
-    const normalised = normaliseMobile(mobile);
-    if (!normalised) return res.status(400).json({ error: "Enter a valid mobile number (10 digits)." });
+    const normalisedEmail = normaliseEmail(email);
+    if (!normalisedEmail) return res.status(400).json({ error: "Enter a valid email address." });
     if (!password)   return res.status(400).json({ error: "Please enter your password." });
 
     const { data, error } = await supabase.auth.signInWithPassword({
-        phone: mobileToPhone(normalised),
+        email: normalisedEmail,
         password
     });
 
@@ -284,12 +282,22 @@ app.post("/api/auth/login", async (req, res) => {
         const badCredentials = /invalid login credentials/i.test(error.message);
         return res.status(401).json({
             error: badCredentials
-                ? "Mobile number or password is incorrect."
+                ? "Email or password is incorrect."
                 : error.message
         });
     }
 
     res.json({ session: data.session, user: data.user });
+});
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+    if (!requireSupabase(res)) return;
+    const email = normaliseEmail(req.body?.email);
+    if (!email) return res.status(400).json({ error: "Enter a valid email address." });
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ message: "If that email has an account, a password reset link is on its way." });
 });
 
 /* ---- refresh -------------------------------------------------------------*/
@@ -320,6 +328,7 @@ async function readProfile(auth) {
         id: row.id || auth.user.id,
         patientName: row.name || meta.patient_name || "Patient",
         caretakerName: row.caretaker_name || meta.caretaker_name || "Caretaker",
+        email: auth.user.email || "",
         mobile: row.caretaker_mobile || meta.mobile || "",
         age: row.age || Number(meta.age) || 72,
         region: row.region || meta.region || "Imphal, Manipur",
@@ -579,20 +588,21 @@ app.post("/api/notify-caregiver", async (req, res) => {
 
     const { data: patientData } = await auth.db
         .from("patients")
-        .select("name, caretaker_mobile")
+        .select("name")
         .eq("user_id", auth.user.id)
         .maybeSingle();
     const { alertTitle } = req.body || {};
 
+    // Email delivery is optional locally; the alert remains logged if it is not configured.
     try {
-        const caretakerPhone = mobileToPhone(patientData?.caretaker_mobile);
-        await sendSms({
-            to: caretakerPhone,
-            body: `${patientData?.name || "Patient"}: ${alertTitle}. Please check in.`
+        await sendEmail({
+            to: auth.user.email,
+            subject: `MindBridge alert: ${alertTitle}`,
+            html: `<h2>MindBridge caregiver alert</h2><p><strong>Patient:</strong> ${patientData?.name || "Patient"}</p><p><strong>Alert:</strong> ${alertTitle}</p><p>${req.body?.alertBody || "Please check in with the patient."}</p>`
         });
-        console.log("SMS sent successfully to:", caretakerPhone);
-    } catch (smsError) {
-        console.error("Caregiver SMS failed:", smsError.message);
+    } catch (emailError) {
+        console.error("Caregiver email failed:", emailError.message);
+        // We still return 200 because the database log was successful
     }
 });
 

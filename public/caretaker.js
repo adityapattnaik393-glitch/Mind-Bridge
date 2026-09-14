@@ -17,7 +17,7 @@
   function renderHero(profile) {
     MB.setText("caretakerName", profile.caretakerName);
     MB.setText("metaPatient", "👤 Caring for " + profile.patientName + ", " + profile.age);
-    MB.setText("metaMobile", "📞 +91 " + profile.mobile);
+    MB.setText("metaEmail", "✉ " + profile.email);
     MB.setText("metaLanguage", "🌐 " + profile.language.native);
     MB.setText("greetTime", MB.greeting() + " — caretaker dashboard");
   }

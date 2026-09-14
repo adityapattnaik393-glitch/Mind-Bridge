@@ -29,23 +29,20 @@
       </div>
 
       <h2>Welcome back</h2>
-      <p class="auth-copy">Sign in with the caretaker's mobile number to continue to the cognitive care dashboard.</p>
+      <p class="auth-copy">Sign in with the caretaker's email to continue to the cognitive care dashboard.</p>
 
       <form class="auth-form" id="signInForm" novalidate>
         <label>
-          Caretaker's mobile number
-          <span class="mobile-input">
-            <span class="prefix">+91</span>
-            <input id="mobile" type="tel" inputmode="numeric" autocomplete="username"
-                   maxlength="15" placeholder="98765 43210" required>
-          </span>
-          <span class="field-hint">Use the number you used when creating your account.</span>
+          Caretaker's email
+          <input id="email" type="email" autocomplete="email" placeholder="caretaker@example.com" required>
         </label>
 
         <label>
           Password
           <input id="password" type="password" autocomplete="current-password" required>
         </label>
+
+        <button class="text-button" id="forgotPasswordBtn" type="button">Forgot password?</button>
 
         <p class="auth-error" id="formMessage" role="alert"></p>
 
