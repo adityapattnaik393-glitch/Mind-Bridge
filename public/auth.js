@@ -150,11 +150,28 @@
         });
         MB.session.save(data.session);
         say("Account created. Opening the dashboard…", true);
-        window.location.href = "patient.html";
+        setTimeout(function () {
+          window.location.href = "patient.html";
+        }, 1000);
       } catch (error) {
-        say(error.message);
-        if (error.status === 409) markInvalid("mobile", true);
         busy(false, "Create account");
+        switch (error.status) {
+          case 409:
+            markInvalid("mobile", true);
+            say("This mobile number already has an account. Please sign in instead.");
+            break;
+          case 503:
+            say("Service temporarily unavailable. Please try again later.");
+            break;
+          case 400:
+            if (error.message.indexOf("mobile") !== -1) markInvalid("mobile", true);
+            if (error.message.indexOf("name") !== -1) markInvalid("caretakerName", true);
+            if (error.message.indexOf("password") !== -1) markInvalid("password", true);
+            say(error.message);
+            break;
+          default:
+            say("Sign up failed: " + error.message);
+        }
       }
     });
   }

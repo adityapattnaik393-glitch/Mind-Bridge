@@ -83,13 +83,13 @@
 
         <label>
           Password
-          <input id="password" type="password" minlength="6" autocomplete="new-password" required>
+          <input id="password" type="password" minlength="6" maxlength="128" pattern=".{6,}" title="Password must be at least 6 characters" autocomplete="new-password" required>
           <span class="field-hint">At least 6 characters.</span>
         </label>
 
         <label>
           Confirm password
-          <input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+          <input id="confirmPassword" type="password" minlength="6" maxlength="128" pattern=".{6,}" title="Password must be at least 6 characters" autocomplete="new-password" required>
         </label>
 
         <p class="auth-error" id="formMessage" role="alert"></p>

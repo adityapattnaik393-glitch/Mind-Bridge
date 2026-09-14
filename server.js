@@ -13,7 +13,7 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
-const sendSms = require("./public/utils/sms");
+const sendSms = require("./utils/sms");
 
 const envPath = path.resolve(__dirname, ".env");
 if (fs.existsSync(envPath)) {
@@ -78,7 +78,9 @@ function normaliseMobile(input) {
 }
 
 function mobileToPhone(mobile) {
-    return `+91${mobile}`;
+    const normalised = normaliseMobile(mobile);
+    if (!normalised) throw new Error("A valid caretaker mobile number is required for SMS alerts.");
+    return `+91${normalised}`;
 }
 
 function requireSupabase(res) {
@@ -582,15 +584,15 @@ app.post("/api/notify-caregiver", async (req, res) => {
         .maybeSingle();
     const { alertTitle } = req.body || {};
 
-    // 4. Send SMS using the utility
     try {
+        const caretakerPhone = mobileToPhone(patientData?.caretaker_mobile);
         await sendSms({
-            to: patientData?.caretaker_mobile,
+            to: caretakerPhone,
             body: `${patientData?.name || "Patient"}: ${alertTitle}. Please check in.`
         });
+        console.log("SMS sent successfully to:", caretakerPhone);
     } catch (smsError) {
         console.error("Caregiver SMS failed:", smsError.message);
-        // We still return 200 because the database log was successful
     }
 });
 
