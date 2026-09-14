@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caretaker Dashboard | MindBridge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* range selector — same pill language as the view switcher */
+  .range-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .range-bar .label { font-family: var(--sans); font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
+  .range {
+    display: flex; gap: 3px; padding: 3px;
+    background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .range button {
+    border: 0; background: none; cursor: pointer; padding: 7px 15px; border-radius: 999px;
+    font-family: var(--sans); font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
+    transition: background .15s ease, color .15s ease;
+  }
+  .range button:hover { background: var(--surface-2); color: var(--ink); }
+  .range button.active { background: var(--teal-700); color: #fff; }
+
+  /* small takeaway under the per-exercise meters */
+  .insight {
+    margin-top: 20px; padding: 16px 18px; border-radius: 14px;
+    background: var(--teal-100); border-left: 4px solid var(--teal-500);
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.6; color: var(--teal-800);
+  }
+  .insight strong { color: var(--teal-700); }
+  .insight p { margin: 0 0 6px; }
+  .insight p:last-child { margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ------------------------------------------------------------ header -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/>
+          <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>
+          <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/>
+        </svg>
+      </div>
+      <div>
+        <h1>MindBridge</h1>
+        <p id="tagline">Cognitive Care Companion</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <nav class="switcher">
+        <a href="patient.html" id="navPatient">Patient</a>
+        <a href="caretaker.html" class="active" id="navCaretaker">Caretaker</a>
+      </nav>
+      <div class="pill" id="syncPill"><span class="dot"></span> <span id="syncLabel">Synced</span></div>
+      <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <!-- -------------------------------------------------------------- hero -->
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-greet">
+        <p class="eyebrow sans" id="greetTime">Caretaker dashboard</p>
+        <h2 id="caretakerName">—</h2>
+        <div class="meta-row">
+          <span id="metaPatient"></span>
+          <span id="metaMobile"></span>
+          <span id="metaLanguage"></span>
+        </div>
+      </div>
+      <div class="streak">
+        <div class="num" id="streakNum">0</div>
+        <div class="lbl">day streak</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ range picker -->
+  <div class="range-bar">
+    <span class="label">Showing</span>
+    <div class="range" id="rangePicker">
+      <button type="button" data-days="7" class="active">Last 7 days</button>
+      <button type="button" data-days="14">Last 14 days</button>
+      <button type="button" data-days="30">Last 30 days</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------- stats -->
+  <section class="stats four">
+    <div class="stat-card">
+      <div class="ic teal">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      </div>
+      <div><p class="num" id="statSessions">0</p><p class="lbl" id="statSessionsLbl">Sessions in range</p></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="ic green">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v1A3 3 0 0 0 3 10.5v3A3 3 0 0 0 6 16.5v1A3.5 3.5 0 0 0 9.5 21"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5v1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3v1a3.5 3.5 0 0 1-3.5 3.5"/></svg>
+      </div>
+      <div><p class="num" id="statAverage">0%</p><p class="lbl">Average score · in range</p></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="ic amber">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <div><p class="num" id="statMinutes">0</p><p class="lbl">Minutes of practice</p></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="ic teal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v4"/><circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 2"/></svg>
+      </div>
+      <div><p class="num" id="statActiveDays">0</p><p class="lbl" id="statActiveDaysLbl">Days practised</p></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------- daily chart + wellbeing -->
+  <section class="grid2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Progress each day</h3>
+          <p class="sub" id="dailyChartSub">Average score per day</p>
+        </div>
+      </div>
+      <div class="bars" id="barsWrap"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Wellbeing Index</h3>
+          <p class="sub">Performance, consistency and trend</p>
+        </div>
+        <span>✨</span>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut">
+          <svg width="170" height="170" viewBox="0 0 170 170">
+            <circle cx="85" cy="85" r="72" stroke="#EFECE2" stroke-width="14" fill="none"/>
+            <circle id="donutRing" class="donut-ring" cx="85" cy="85" r="72" stroke="url(#gradC)" stroke-width="14"
+                    fill="none" stroke-dasharray="452" stroke-dashoffset="452" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="gradC" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#3E9B6E"/>
+                <stop offset="100%" stop-color="#DE9A34"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="donut-center">
+            <span class="n" id="wellbeingNum">0</span>
+            <span class="o">out of 100</span>
+          </div>
+        </div>
+        <div class="tags" id="tagsWrap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------- breakdown + day table -->
+  <section class="grid2">
+    <div class="panel">
+      <h3>By exercise</h3>
+      <p class="sub">Where the patient is strongest, all time</p>
+      <div id="breakdownWrap"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Day-by-day log</h3>
+      <p class="sub" id="dayTableSub">Sessions, average and best score per day</p>
+      <div class="table-scroll">
+        <table class="data">
+          <thead>
+            <tr><th>Date</th><th>Sessions</th><th>Average</th><th>Best</th><th>Minutes</th></tr>
+          </thead>
+          <tbody id="dayTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- session log -->
+  <section class="grid1">
+    <div class="panel">
+      <h3>Every session</h3>
+      <p class="sub">The full record saved to Supabase</p>
+      <div class="table-scroll">
+        <table class="data">
+          <thead>
+            <tr><th>When</th><th>Exercise</th><th>Focus area</th><th>Score</th><th>Attempts</th></tr>
+          </thead>
+          <tbody id="sessionTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- alerts log -->
+  <section class="grid1">
+    <div class="panel">
+      <h3>Caregiver alert log</h3>
+      <p class="sub">Reminders the caretaker has acknowledged</p>
+      <div id="alertLog"></div>
+    </div>
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+<script src="i18n.js"></script>
+<script src="caretaker.js"></script>
+</body>
+</html>
