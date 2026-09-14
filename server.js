@@ -2,12 +2,11 @@
  * MindBridge — server
  *
  * Auth model: the caretaker signs up and signs in with a MOBILE NUMBER.
- * Supabase Auth needs an email identifier, so the server maps the normalised
- * mobile number to an internal address (9876543210@mindbridge.app). The
- * browser never sees or types that address.
+ * Supabase Auth uses the caretaker's mobile number directly. The browser never
+ * asks for or stores an email address.
  *
- * IMPORTANT Supabase setting: Authentication -> Sign In / Providers -> Email
- * -> turn OFF "Confirm email". Those internal addresses cannot receive mail.
+ * IMPORTANT Supabase setting: Authentication -> Sign In / Providers -> Phone
+ * must be enabled, with phone confirmation disabled for password-only login.
  * ==========================================================================*/
 
 const path = require("path");
@@ -29,8 +28,6 @@ const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY
     || process.env.SUPABASE_ANON_KEY
     || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-/* Internal domain used to turn a mobile number into a Supabase Auth identity. */
-const AUTH_DOMAIN = process.env.AUTH_EMAIL_DOMAIN || "mindbridge.app";
 const TIME_ZONE = process.env.APP_TIME_ZONE || "Asia/Kolkata";
 
 /* Base client — used for auth calls only (signUp / signIn / refresh). */
@@ -79,8 +76,8 @@ function normaliseMobile(input) {
     return trimmed;
 }
 
-function mobileToEmail(mobile) {
-    return `${mobile}@${AUTH_DOMAIN}`;
+function mobileToPhone(mobile) {
+    return `+91${mobile}`;
 }
 
 function requireSupabase(res) {
@@ -213,10 +210,8 @@ app.post("/api/auth/signup", async (req, res) => {
     }
 
     const language = languageByCode(languageCode);
-    const email = mobileToEmail(normalised);
-
     const { data, error } = await supabase.auth.signUp({
-        email,
+        phone: mobileToPhone(normalised),
         password,
         options: {
             data: {
@@ -247,7 +242,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
     if (!data.session) {
         return res.status(400).json({
-            error: "Account created, but email confirmation is switched on in Supabase. Turn off Authentication → Providers → Email → 'Confirm email', then sign in."
+            error: "Account created, but phone confirmation is switched on in Supabase. Turn off Authentication -> Providers -> Phone -> 'Confirm phone', then sign in."
         });
     }
 
@@ -278,7 +273,7 @@ app.post("/api/auth/login", async (req, res) => {
     if (!password)   return res.status(400).json({ error: "Please enter your password." });
 
     const { data, error } = await supabase.auth.signInWithPassword({
-        email: mobileToEmail(normalised),
+        phone: mobileToPhone(normalised),
         password
     });
 
