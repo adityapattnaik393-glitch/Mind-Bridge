@@ -13,6 +13,7 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
+const sendSms = require("./public/utils/sms");
 
 const envPath = path.resolve(__dirname, ".env");
 if (fs.existsSync(envPath)) {
@@ -558,6 +559,7 @@ async function logAlert(auth, body, res) {
 
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ success: true, alert: data });
+    return true;
 }
 
 app.post("/api/alerts", async (req, res) => {
@@ -570,7 +572,26 @@ app.post("/api/alerts", async (req, res) => {
 app.post("/api/notify-caregiver", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
-    await logAlert(auth, req.body, res);
+    const logged = await logAlert(auth, req.body, res);
+    if (!logged) return;
+
+    const { data: patientData } = await auth.db
+        .from("patients")
+        .select("name, caretaker_mobile")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
+    const { alertTitle } = req.body || {};
+
+    // 4. Send SMS using the utility
+    try {
+        await sendSms({
+            to: patientData?.caretaker_mobile,
+            body: `${patientData?.name || "Patient"}: ${alertTitle}. Please check in.`
+        });
+    } catch (smsError) {
+        console.error("Caregiver SMS failed:", smsError.message);
+        // We still return 200 because the database log was successful
+    }
 });
 
 /* --------------------------------------------------------------- fallback */
