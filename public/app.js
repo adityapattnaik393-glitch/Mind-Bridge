@@ -1,180 +1,159 @@
-const SYMBOLS = ['🍵', '🎋', '🦏', '🪷'];
-let deck = [...SYMBOLS, ...SYMBOLS];
-let pickedTiles = [];
-let matchedTotal = 0;
-let totalAttempts = 0;
+const API_BASE_URL = window.location.port === "5000"
+  ? ""
+  : `${window.location.protocol}//${window.location.hostname}:5000`;
+
 let patient = null;
+let authMode = "login";
 
-const board = document.getElementById('game-grid');
-const voiceHelpBtn = document.getElementById('voice-help-btn');
-const resetBtn = document.getElementById('reset-btn');
-const toggleCaregiverBtn = document.getElementById('toggle-caregiver-btn');
-const caregiverPanel = document.getElementById('caregiver-panel');
-const analyticsFeed = document.getElementById('analytics-feed');
-const aiText = document.getElementById('ai-text');
-
-function voiceNarrate(sentence) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const voice = new SpeechSynthesisUtterance(sentence);
-    voice.rate = 0.85;
-    window.speechSynthesis.speak(voice);
-  }
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
 }
 
-voiceHelpBtn.addEventListener('click', () => {
-  voiceNarrate('Tap or press enter on two boxes to find matching pairs.');
-});
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
 
-async function startup() {
+function getToken() {
+  return localStorage.getItem("mindbridge_access_token");
+}
+
+function setAuthMessage(message = "") {
+  setText("authError", message);
+}
+
+async function apiFetch(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("Content-Type", "application/json");
+  const token = getToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(apiUrl(path), { ...options, headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Something went wrong.");
+  return data;
+}
+
+function showDashboard() {
+  document.getElementById("authShell")?.classList.add("is-hidden");
+  document.getElementById("dashboardApp")?.classList.remove("is-hidden");
+}
+
+function showAuth() {
+  document.getElementById("authShell")?.classList.remove("is-hidden");
+  document.getElementById("dashboardApp")?.classList.add("is-hidden");
+}
+
+function updateAuthMode() {
+  const signup = authMode === "signup";
+  setText("authTitle", signup ? "Create your account" : "Welcome back");
+  setText("authCopy", signup ? "Set up a private space for your cognitive care journey." : "Sign in to continue to your cognitive care dashboard.");
+  setText("authSubmit", signup ? "Create account" : "Sign in");
+  setText("authSwitchText", signup ? "Already have an account?" : "New to MindBridge?");
+  setText("authSwitch", signup ? "Sign in" : "Create account");
+  document.getElementById("nameField")?.classList.toggle("is-hidden", !signup);
+  document.getElementById("authPassword")?.setAttribute("autocomplete", signup ? "new-password" : "current-password");
+  setAuthMessage();
+}
+
+async function loadPatient() {
+  patient = await apiFetch("/api/patient");
+  window.currentPatient = patient;
+  setText("patientName", patient.name || "Patient");
+  setText("patientAge", `♡ ${patient.age || 72} years`);
+  setText("patientRegion", `📍 ${patient.region || "Imphal, Manipur"}`);
+  setText("patientLanguage", `🌐 ${patient.preferredLanguage || "English"}`);
+  setText("streakNum", patient.streak || 0);
+}
+
+function updateStats(scores) {
+  if (!scores.length) return;
+  const values = scores.map((item) => Number(item.score) || 0);
+  const average = Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+  setText("avgScore", `${average}%`);
+  setText("sessionCount", scores.length);
+  setText("bestScore", `${Math.max(...values)}%`);
+}
+
+function updateChart(scores) {
+  if (!scores.length || typeof window.setWeeklyScores !== "function") return;
+  const values = scores.slice(0, 5).reverse().map((item) => Number(item.score) || 0);
+  while (values.length < 5) values.unshift(0);
+  window.setWeeklyScores(values);
+}
+
+async function loadScores() {
+  const scores = await apiFetch("/api/scores");
+  updateStats(scores);
+  updateChart(scores);
+}
+
+window.recordScore = async ({ name, score, attempts = 1 }) => {
   try {
-    const res = await fetch('/api/patient');
-    if (res.ok) {
-      patient = await res.json();
-    }
-  } catch (err) {
-    console.error('Offline or profile fetch error:', err);
-  }
-  buildBoard();
-}
-
-function buildBoard() {
-  board.innerHTML = '';
-  pickedTiles = [];
-  matchedTotal = 0;
-  totalAttempts = 0;
-  deck.sort(() => 0.5 - Math.random());
-
-  deck.forEach((symbol, index) => {
-    // Accessible button elements instead of un-focusable divs
-    const tile = document.createElement('button');
-    tile.type = 'button';
-    tile.classList.add('tile');
-    tile.dataset.symbol = symbol;
-    tile.setAttribute('aria-label', `Card ${index + 1}: Hidden`);
-    tile.textContent = '🌸';
-    tile.addEventListener('click', () => onTileSelect(tile));
-    board.appendChild(tile);
-  });
-}
-
-function onTileSelect(tile) {
-  if (pickedTiles.length >= 2 || tile.classList.contains('revealed') || tile.classList.contains('matched')) return;
-
-  tile.classList.add('revealed');
-  tile.textContent = tile.dataset.symbol;
-  tile.setAttribute('aria-label', `Card revealed: ${tile.dataset.symbol}`);
-  pickedTiles.push(tile);
-
-  if (pickedTiles.length === 2) {
-    totalAttempts++;
-    const [t1, t2] = pickedTiles;
-
-    if (t1.dataset.symbol === t2.dataset.symbol) {
-      t1.classList.add('matched');
-      t2.classList.add('matched');
-      t1.setAttribute('aria-disabled', 'true');
-      t2.setAttribute('aria-disabled', 'true');
-      matchedTotal++;
-      pickedTiles = [];
-
-      if (matchedTotal === SYMBOLS.length) {
-        processSessionEnd();
-      }
-    } else {
-      setTimeout(() => {
-        t1.classList.remove('revealed');
-        t2.classList.remove('revealed');
-        t1.textContent = '🌸';
-        t2.textContent = '🌸';
-        t1.setAttribute('aria-label', 'Card: Hidden');
-        t2.setAttribute('aria-label', 'Card: Hidden');
-        pickedTiles = [];
-      }, 950);
-    }
-  }
-}
-
-async function processSessionEnd() {
-  const calculatedScore = Math.max(10, 100 - (totalAttempts - 4) * 10);
-  aiText.textContent = 'Analyzing session activity...';
-
-  if (!patient || !patient._id) {
-    aiText.textContent = 'Activity finished! Great job.';
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/scores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        patientId: patient._id,
-        patientName: patient.name || 'Friend',
-        score: calculatedScore,
-        attempts: totalAttempts,
-        difficultyLevel: 1
-      })
+    await apiFetch("/api/scores", {
+      method: "POST",
+      body: JSON.stringify({ name, score, attempts })
     });
-
-    const result = await res.json();
-    if (result.success && result.data.aiSpokenMessage) {
-      aiText.textContent = result.data.aiSpokenMessage;
-      voiceNarrate(result.data.aiSpokenMessage);
-    }
-    refreshCaregiverLogs();
-  } catch (e) {
-    aiText.textContent = 'Well done! Today\'s session is complete.';
+    await loadScores();
+  } catch (error) {
+    console.warn("Could not save score:", error.message);
   }
-}
+};
 
-// XSS-Safe DOM Population (No innerHTML)
-async function refreshCaregiverLogs() {
-  if (!patient || !patient._id) return;
-  
-  analyticsFeed.textContent = '';
+async function signInOrSignUp(event) {
+  event.preventDefault();
+  const submit = document.getElementById("authSubmit");
+  submit.disabled = true;
+  setAuthMessage();
+
+  const payload = {
+    email: document.getElementById("authEmail").value.trim(),
+    password: document.getElementById("authPassword").value
+  };
+  if (authMode === "signup") payload.name = document.getElementById("authName").value.trim();
+
   try {
-    const res = await fetch(`/api/scores/${patient._id}`);
-    const list = await res.json();
-
-    if (!Array.isArray(list) || !list.length) {
-      analyticsFeed.textContent = 'No recorded sessions yet.';
+    const data = await apiFetch(`/api/auth/${authMode}`, { method: "POST", body: JSON.stringify(payload) });
+    if (!data.session) {
+      setAuthMessage("Check your email to confirm your account, then sign in.");
       return;
     }
-
-    list.forEach(item => {
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-
-      const timeSpan = document.createElement('strong');
-      timeSpan.textContent = `${new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: `;
-
-      const scoreText = document.createTextNode(`Score: ${item.score}/100 (${item.attempts} attempts) — `);
-      
-      const obsElem = document.createElement('span');
-      obsElem.style.fontStyle = 'italic';
-      obsElem.textContent = item.aiClinicalObservation || 'Completed normally.';
-
-      entry.appendChild(timeSpan);
-      entry.appendChild(scoreText);
-      entry.appendChild(obsElem);
-      analyticsFeed.appendChild(entry);
-    });
-  } catch (err) {
-    analyticsFeed.textContent = 'Unable to load caregiver logs at this time.';
+    localStorage.setItem("mindbridge_access_token", data.session.access_token);
+    showDashboard();
+    await loadPatient();
+    await loadScores();
+  } catch (error) {
+    setAuthMessage(error.message);
+  } finally {
+    submit.disabled = false;
   }
 }
 
-resetBtn.addEventListener('click', () => {
-  aiText.textContent = 'Board reset. Ready when you are.';
-  buildBoard();
-});
+async function initializeApp() {
+  document.getElementById("authForm")?.addEventListener("submit", signInOrSignUp);
+  document.getElementById("authSwitch")?.addEventListener("click", () => {
+    authMode = authMode === "login" ? "signup" : "login";
+    updateAuthMode();
+  });
+  document.getElementById("logoutBtn")?.addEventListener("click", () => {
+    localStorage.removeItem("mindbridge_access_token");
+    patient = null;
+    showAuth();
+    authMode = "login";
+    updateAuthMode();
+  });
 
-toggleCaregiverBtn.addEventListener('click', () => {
-  caregiverPanel.classList.toggle('hidden');
-  if (!caregiverPanel.classList.contains('hidden')) {
-    refreshCaregiverLogs();
+  updateAuthMode();
+  if (!getToken()) return;
+
+  try {
+    showDashboard();
+    await loadPatient();
+    await loadScores();
+  } catch (error) {
+    localStorage.removeItem("mindbridge_access_token");
+    showAuth();
+    setAuthMessage(error.message);
   }
-});
+}
 
-startup();
+initializeApp();

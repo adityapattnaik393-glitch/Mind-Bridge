@@ -1,128 +1,154 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+const path = require("path");
+const fs = require("fs");
+const express = require("express");
+const { createClient } = require("@supabase/supabase-js");
 
-const { GoogleGenAI } = require('@google/genai');
-const Patient = require('./models/Patient');
-const GameScore = require('./models/GameScore');
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/dementia_care_db';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-// Basic CORS restriction
-app.use(cors());
-app.use(express.json({ limit: '10kb' })); // Guard against payload bloat
-app.use(express.static(path.join(__dirname, 'public')));
-
-// 1. Safe Patient Lookup (Creates fallback if none exists)
-app.get('/api/patient', async (req, res) => {
-  try {
-    let patient = await Patient.findOne();
-    if (!patient) {
-      patient = await Patient.create({
-        name: 'Elderly Participant',
-        age: 73,
-        region: 'North Eastern Region (NER)',
-        caregiverName: 'Assigned Caregiver',
-        caregiverPhone: '+91 9876543210'
-      });
-    }
-    res.json(patient);
-  } catch (err) {
-    res.status(500).json({ error: 'Database error fetching patient' });
-  }
-});
-
-// 2. Score Submission with Input Validation
-app.post('/api/scores', async (req, res) => {
-  try {
-    const { patientId, score, attempts, difficultyLevel, patientName } = req.body;
-
-    // Strict validation
-    if (!patientId || !mongoose.isValidObjectId(patientId)) {
-      return res.status(400).json({ error: 'Valid patientId is required.' });
-    }
-    if (typeof score !== 'number' || typeof attempts !== 'number') {
-      return res.status(400).json({ error: 'Score and attempts must be numeric.' });
-    }
-
-    let aiSpokenMessage = 'Well done on completing today’s activity.';
-    let aiCaregiverNote = 'Session recorded within expected engagement range.';
-
-    // AI Companion Call
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const prompt = `You are a supportive, gentle companion for an elderly user engaging in cognitive stimulation exercises.
-Name: ${patientName || 'Friend'}. Score: ${score}/100 with ${attempts} attempts.
-Provide a JSON response with:
-1. "spokenMessage": Max 2 sentences, calm, warm, encouraging North Eastern hospitality tone.
-2. "caregiverNote": 1 objective sentence describing engagement pace (non-diagnostic, assistive observation only).
-Return ONLY raw JSON: {"spokenMessage": "...", "caregiverNote": "..."}`;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt
-        });
-
-        const raw = response.text.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(raw);
-        aiSpokenMessage = parsed.spokenMessage || aiSpokenMessage;
-        aiCaregiverNote = parsed.caregiverNote || aiCaregiverNote;
-      } catch (aiErr) {
-        console.warn('AI fallback used:', aiErr.message);
-      }
-    }
-
-    const newScore = new GameScore({
-      patientId,
-      score: Math.min(100, Math.max(0, score)),
-      attempts: Math.max(1, attempts),
-      difficultyLevel: difficultyLevel || 1,
-      aiSpokenMessage,
-      aiClinicalObservation: aiCaregiverNote // Retains compatibility with schema
-    });
-
-    await newScore.save();
-    res.status(201).json({ success: true, data: newScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error saving score' });
-  }
-});
-
-// 3. Caregiver Dashboard Feed
-app.get('/api/scores/:patientId', async (req, res) => {
-  try {
-    const { patientId } = req.params;
-    if (!mongoose.isValidObjectId(patientId)) {
-      return res.status(400).json({ error: 'Invalid patient ID format.' });
-    }
-
-    const scores = await GameScore.find({ patientId })
-      .sort({ completedAt: -1 })
-      .limit(10);
-    res.json(scores);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve logs.' });
-  }
-});
-
-// Startup: Await MongoDB connection before listening
-async function startServer() {
-  try {
-    await mongoose.connect(MONGO_URI);
-    console.log('Connected to MongoDB.');
-    app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('Fatal: Failed to connect to MongoDB:', err);
-    process.exit(1);
-  }
+const envPath = path.resolve(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+    Object.assign(process.env, require("dotenv").parse(fs.readFileSync(envPath)));
 }
 
-startServer();
+const app = express();
+const port = Number(process.env.PORT || 5000);
+const publicPath = path.join(__dirname, "public");
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabase = supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+    : null;
+
+app.use(express.json());
+app.use(express.static(publicPath));
+
+function requireSupabase(res) {
+    if (!supabase) {
+        res.status(503).json({ error: "Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env." });
+        return false;
+    }
+    return true;
+}
+
+async function getUser(req, res) {
+    if (!requireSupabase(res)) return null;
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+    if (!token) {
+        res.status(401).json({ error: "Sign in is required." });
+        return null;
+    }
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) {
+        res.status(401).json({ error: "Your session has expired. Please sign in again." });
+        return null;
+    }
+    return data.user;
+}
+
+app.get("/api/health", (req, res) => {
+    res.json({ ok: true, supabaseConfigured: Boolean(supabase) });
+});
+
+app.get("/api/config", (req, res) => {
+    res.json({ supabaseConfigured: Boolean(supabase) });
+});
+
+app.post("/api/auth/login", async (req, res) => {
+    if (!requireSupabase(res)) return;
+    const { email, password } = req.body || {};
+    if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return res.status(401).json({ error: error.message });
+    res.json({ session: data.session, user: data.user });
+});
+
+app.post("/api/auth/signup", async (req, res) => {
+    if (!requireSupabase(res)) return;
+    const { email, password, name } = req.body || {};
+    if (!email || !password || !name) return res.status(400).json({ error: "Name, email, and password are required." });
+    if (password.length < 6) return res.status(400).json({ error: "Use a password with at least 6 characters." });
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } }
+    });
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json({ session: data.session, user: data.user, needsEmailConfirmation: !data.session });
+});
+
+app.get("/api/patient", async (req, res) => {
+    const user = await getUser(req, res);
+    if (!user) return;
+
+    const { data, error } = await supabase
+        .from("patients")
+        .select("id, name, age, region, preferred_language, streak")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (error) return res.status(500).json({ error: error.message });
+    const profile = data || {};
+    res.json({
+        _id: profile.id || user.id,
+        id: profile.id || user.id,
+        name: profile.name || user.user_metadata?.name || user.email?.split("@")[0] || "Patient",
+        age: profile.age || 72,
+        region: profile.region || "Imphal, Manipur",
+        preferredLanguage: profile.preferred_language || "English",
+        streak: profile.streak || 0
+    });
+});
+
+app.get("/api/scores", async (req, res) => {
+    const user = await getUser(req, res);
+    if (!user) return;
+
+    const { data, error } = await supabase
+        .from("game_scores")
+        .select("id, game_type, score, attempts, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+});
+
+app.post("/api/scores", async (req, res) => {
+    const user = await getUser(req, res);
+    if (!user) return;
+    const { name, score, attempts = 1 } = req.body || {};
+    const numericScore = Number(score);
+    if (!name || !Number.isFinite(numericScore)) return res.status(400).json({ error: "A game name and score are required." });
+
+    const { data, error } = await supabase
+        .from("game_scores")
+        .insert({ user_id: user.id, game_type: name, score: Math.max(0, Math.min(100, numericScore)), attempts })
+        .select("id, game_type, score, attempts, created_at")
+        .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json(data);
+});
+
+app.post("/api/notify-caregiver", async (req, res) => {
+    const user = await getUser(req, res);
+    if (!user) return;
+    const { alertTitle } = req.body || {};
+    if (!alertTitle) return res.status(400).json({ error: "Alert title is required." });
+
+    const { error } = await supabase.from("cognitive_alerts").insert({
+        user_id: user.id,
+        alert_title: alertTitle,
+        status: "Acknowledged"
+    });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, message: "Caregiver alert acknowledged." });
+});
+
+app.use((req, res) => res.sendFile(path.join(publicPath, "index.html")));
+
+app.listen(port, () => {
+    console.log(`MindBridge running at http://localhost:${port}`);
+});
