@@ -1086,10 +1086,24 @@ app.use((req, res) => {
     res.sendFile(path.join(publicPath, "index.html"));
 });
 
-app.listen(port, () => {
-    console.log(`MindBridge running at http://localhost:${port}`);
-    if (!supabase) console.warn("⚠  Supabase is not configured — add SUPABASE_URL and a key to .env");
-    console.log(`Supabase configured: ${supabase ? "yes" : "no"}`);
-});
+function startServer(currentPort) {
+    const server = app.listen(currentPort, () => {
+        console.log(`MindBridge running at http://localhost:${currentPort}`);
+        if (!supabase) console.warn("⚠  Supabase is not configured — add SUPABASE_URL and a key to .env");
+        console.log(`Supabase configured: ${supabase ? "yes" : "no"}`);
+    });
+
+    server.on("error", (error) => {
+        if (error && error.code === "EADDRINUSE") {
+            const nextPort = currentPort + 1;
+            console.warn(`Port ${currentPort} is already in use. Retrying on port ${nextPort}.`);
+            startServer(nextPort);
+            return;
+        }
+        throw error;
+    });
+}
+
+startServer(port);
 
 module.exports = app;
