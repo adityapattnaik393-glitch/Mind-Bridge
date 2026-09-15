@@ -12,10 +12,20 @@ const fs = require("fs");
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const sendEmail = require("./public/utils/email");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const envPath = path.resolve(__dirname, ".env");
 if (fs.existsSync(envPath)) {
     Object.assign(process.env, require("dotenv").parse(fs.readFileSync(envPath)));
+}
+
+// Initialize Gemini AI
+const genAI = process.env.GEMINI_API_KEY
+    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    : null;
+
+if (!genAI && process.env.NODE_ENV === "production") {
+    console.warn("⚠️ GEMINI_API_KEY not configured. AI features disabled.");
 }
 
 const app = express();
@@ -343,6 +353,32 @@ async function readProfile(auth) {
     };
 }
 
+/* ---- Helper: Get Patient Context for AI ------------------------------- */
+async function getPatientAIContext(auth) {
+    const profile = await readProfile(auth);
+
+    const { data: scores, error } = await auth.db
+        .from("game_scores")
+        .select("game_type, category, score, attempts, duration_seconds, created_at")
+        .eq("user_id", auth.user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+    if (error) {
+        throw new Error("Unable to load patient game history.");
+    }
+
+    return {
+        patient: {
+            name: profile.patientName,
+            age: profile.age,
+            language: profile.language?.label || "English",
+            region: profile.region
+        },
+        recentGames: scores || []
+    };
+}
+
 app.get("/api/profile", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
@@ -583,6 +619,144 @@ app.post("/api/alerts", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
     await logAlert(auth, req.body, res);
+});
+
+/* ============================================================
+   AI CHAT ROUTE
+============================================================ */
+app.post("/api/ai/chat", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    if (!genAI) {
+        return res.status(503).json({
+            error: "AI service is not configured."
+        });
+    }
+
+    try {
+        const message = String(req.body?.message || "").trim();
+
+        if (!message) {
+            return res.status(400).json({ error: "Message is required." });
+        }
+
+        if (message.length > 1000) {
+            return res.status(400).json({ error: "Message is too long." });
+        }
+
+        const context = await getPatientAIContext(auth);
+        const prompt = `
+You are MindBridge, a friendly cognitive companion for an elderly person.
+
+IMPORTANT:
+- Be warm, patient and simple.
+- Use short sentences.
+- Avoid complicated medical terminology.
+- Do not pretend to be a doctor.
+- Do not diagnose dementia or any medical condition.
+- If asked for medical advice, suggest contacting a healthcare professional.
+- Encourage conversation and positive engagement.
+- Respond in the patient's preferred language when possible.
+
+PATIENT INFORMATION:
+Name: ${context.patient.name}
+Age: ${context.patient.age}
+Preferred language: ${context.patient.language}
+Region: ${context.patient.region}
+
+RECENT COGNITIVE GAME HISTORY:
+${JSON.stringify(context.recentGames, null, 2)}
+
+PATIENT MESSAGE:
+${message}
+
+Give a warm, conversational response.
+`;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash"});
+        const result = await model.generateContent(prompt);
+        const reply = result.response.text();
+
+        res.json({ reply: reply || "I'm here with you. Tell me more." });
+    } catch (error) {
+        console.error("Gemini chat error:", error);
+        res.status(500).json({ error: "The AI assistant is temporarily unavailable." });
+    }
+});
+
+/* ============================================================
+   WORD GARDEN AI ROUTE
+============================================================ */
+app.post("/api/ai/word-question", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    if (!genAI) {
+        return res.status(503).json({ error: "AI service is not configured." });
+    }
+
+    try {
+        const context = await getPatientAIContext(auth);
+        const usedWords = Array.isArray(req.body?.usedWords) ? req.body.usedWords : [];
+        const safeUsedWords = usedWords.map((word) => String(word).trim()).filter(Boolean).slice(-100);
+        const prompt = `Generate a simple vocabulary exercise for an elderly patient.
+
+PATIENT:
+Name: ${context.patient.name}
+Age: ${context.patient.age}
+Language: ${context.patient.language}
+
+RECENT PERFORMANCE:
+${JSON.stringify(context.recentGames.slice(0, 5))}
+
+WORDS ALREADY USED:
+${JSON.stringify(safeUsedWords)}
+
+Generate ONE NEW vocabulary question.
+
+Rules:
+1. Do NOT repeat any previously used word
+2. Use simple, everyday vocabulary
+3. Create exactly 4 options
+4. One option must be the correct answer
+5. Avoid obscure words
+6. Use familiar objects, foods, places, emotions
+
+Respond ONLY with this exact JSON format:
+{
+  "prompt": "Which word means happy?",
+  "options": ["Joyful", "Chair", "Rain", "Window"],
+  "answer": "Joyful",
+  "word": "Joyful"
+}
+
+Do not include any other text.`;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const result = await model.generateContent(prompt);
+        let responseText = result.response.text().trim();
+
+        if (responseText.startsWith("```json")) responseText = responseText.slice(7);
+        if (responseText.startsWith("```")) responseText = responseText.slice(3);
+        if (responseText.endsWith("```")) responseText = responseText.slice(0, -3);
+
+        const question = JSON.parse(responseText.trim());
+        if (!question.prompt || !Array.isArray(question.options) || question.options.length !== 4
+            || !question.answer || !question.word) {
+            throw new Error("Invalid question format from Gemini.");
+        }
+
+        if (safeUsedWords.includes(question.word.toLowerCase())) {
+            console.log("Word already used, retrying...");
+            return res.status(409).json({ error: "Word repeated. Try again." });
+        }
+
+        res.json(question);
+    } catch (error) {
+        console.error("Word Garden AI error:", error.message);
+        res.status(500).json({ error: "Unable to generate a new word exercise." });
+    }
 });
 
 /* Kept for compatibility with the earlier front-end call. */

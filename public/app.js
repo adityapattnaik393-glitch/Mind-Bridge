@@ -33,18 +33,13 @@
     }
   };
 
-  /* Supabase puts the confirmed session in the URL hash after email signup. */
+  /* Remove confirmation tokens without creating a session automatically. */
   function consumeAuthRedirect() {
     var params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     var accessToken = params.get("access_token");
     if (!accessToken) return;
 
-    session.save({
-      access_token: accessToken,
-      refresh_token: params.get("refresh_token") || ""
-    });
     window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    window.location.replace("patient.html");
   }
 
   consumeAuthRedirect();

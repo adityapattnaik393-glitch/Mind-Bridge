@@ -4,10 +4,14 @@
   "description": "AI-based cognitive gaming platform for elderly dementia patients",
   "main": "server.js",
   "dependencies": {
+    "@google/generative-ai": "^0.3.0",
     "@supabase/supabase-js": "^2.116.0",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "resend": "^6.0.0"
+    "body-parser": "^1.x",
+    "cors": "^2.x",
+    "dotenv": "^16.x",
+    "express": "^4.x",
+    "resend": "^0.x",
+    "twilio": "^3.x"
   },
   "scripts": {
     "start": "node server.js",

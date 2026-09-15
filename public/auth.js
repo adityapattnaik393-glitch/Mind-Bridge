@@ -6,9 +6,6 @@
 (function () {
   "use strict";
 
-  /* An existing session skips the auth pages entirely. */
-  if (MB.redirectIfSignedIn()) return;
-
   var signInForm = document.getElementById("signInForm");
   var signUpForm = document.getElementById("signUpForm");
   var message = document.getElementById("formMessage");
@@ -190,11 +187,9 @@
           busy(false, "Create account");
           return;
         }
-        MB.session.save(data.session);
-        say("Account created. Opening the dashboard…", true);
-        setTimeout(function () {
-          window.location.href = "patient.html";
-        }, 1000);
+        MB.session.clear();
+        say("Account created. Please sign in to continue.", true);
+        busy(false, "Create account");
       } catch (error) {
         say(error.message);
         if (error.status === 409) markInvalid("email", true);

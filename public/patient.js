@@ -508,6 +508,57 @@
 
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 
+  /* ============================================================ MINDBRIDGE AI CHAT */
+
+  var aiChatForm = document.getElementById("aiChatForm");
+  var aiChatInput = document.getElementById("aiChatInput");
+  var aiChatMessages = document.getElementById("aiChatMessages");
+  var aiChatSend = document.getElementById("aiChatSend");
+
+  function addAIMessage(text, type) {
+    var message = document.createElement("div");
+    message.className = type === "user" ? "user-message" : "ai-message";
+    message.textContent = text;
+    aiChatMessages.appendChild(message);
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+  }
+
+  if (aiChatForm) {
+    aiChatForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var message = aiChatInput.value.trim();
+      if (!message) return;
+
+      addAIMessage(message, "user");
+      aiChatInput.value = "";
+      aiChatInput.disabled = true;
+      aiChatSend.disabled = true;
+
+      var thinking = document.createElement("div");
+      thinking.className = "ai-message";
+      thinking.textContent = "Thinking...";
+      aiChatMessages.appendChild(thinking);
+
+      try {
+        var result = await MB.api("/api/ai/chat", {
+          method: "POST",
+          body: JSON.stringify({ message: message })
+        });
+        thinking.remove();
+        addAIMessage(result.reply, "ai");
+        speak(result.reply);
+      } catch (error) {
+        thinking.remove();
+        addAIMessage("I'm having trouble connecting. Please try again.", "ai");
+        handleError(error);
+      } finally {
+        aiChatInput.disabled = false;
+        aiChatSend.disabled = false;
+        aiChatInput.focus();
+      }
+    });
+  }
+
   (async function boot() {
     try {
       await loadSummary(false);
