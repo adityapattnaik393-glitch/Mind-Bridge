@@ -35,9 +35,9 @@
       questionOf: "Question {i} of {n}",
       excellent: "Excellent work today.", steady: "Nice and steady progress.", keepGoing: "Good effort — keep practising.",
       correct: "Correct!", notQuite: "Not quite.", tryAgain: "Try again.", matched: "Matched!",
-      wordGarden: "Word Garden", memoryMatch: "Memory Match", picturePath: "Picture Path",
-      language: "Language", memory: "Memory", focus: "Focus",
-      findPairs: "Find all 4 pairs", tapOrder: "Tap the shapes in the order shown",
+      wordGarden: "Word Garden", memoryMatch: "Memory Match", picturePath: "Picture Path", colorClash: "Color Clash",
+      language: "Language", memory: "Memory", focus: "Focus", executiveFunction: "Executive Function",
+      findPairs: "Find all 4 pairs", tapOrder: "Tap the shapes in the order shown", chooseInkColor: "Choose the ink color",
       acknowledged: "acknowledged"
     },
 

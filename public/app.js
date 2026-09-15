@@ -163,7 +163,8 @@
   var GAME_META = {
     "Word Garden":  { emoji: "🌱", category: "Language", key: "word" },
     "Memory Match": { emoji: "🧠", category: "Memory",   key: "memory" },
-    "Picture Path": { emoji: "🔍", category: "Focus",    key: "picture" }
+    "Picture Path": { emoji: "🔍", category: "Focus",    key: "picture" },
+    "Color Clash":  { emoji: "🎨", category: "Executive Function", key: "color" }
   };
 
   function gameMeta(name) {

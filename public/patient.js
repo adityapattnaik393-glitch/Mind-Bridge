@@ -158,6 +158,7 @@
     if (name === "Word Garden") return t("wordGarden");
     if (name === "Memory Match") return t("memoryMatch");
     if (name === "Picture Path") return t("picturePath");
+    if (name === "Color Clash") return t("colorClash");
     return name;
   }
 
@@ -165,6 +166,7 @@
     if (category === "Language") return t("language");
     if (category === "Memory") return t("memory");
     if (category === "Focus") return t("focus");
+    if (category === "Executive Function") return t("executiveFunction");
     return category;
   }
 
@@ -430,9 +432,71 @@
     });
   }
 
+  function startColorClash() {
+    var rounds = 5;
+    var correct = 0;
+    var count = 0;
+    var colors = [
+      { label: "Red", value: "#d94a4a" },
+      { label: "Blue", value: "#3b82f6" },
+      { label: "Green", value: "#3e9b6e" },
+      { label: "Yellow", value: "#d9a426" }
+    ];
+    sessionStartedAt = Date.now();
+
+    function renderRound() {
+      var wordIndex = Math.floor(Math.random() * colors.length);
+      var inkIndex = Math.floor(Math.random() * colors.length);
+      var target = colors[wordIndex].label;
+      var inkColor = colors[inkIndex].value;
+      var options = colors.slice().sort(function () { return Math.random() - 0.5; });
+
+      openModal(
+        "<h3>🎨 " + t("colorClash") + "</h3>"
+        + '<p class="sub sans">' + t("chooseInkColor") + "</p>"
+        + '<p class="prompt" style="font-size:32px; color:' + inkColor + ';">' + MB.escapeHtml(target) + "</p>"
+        + '<div class="word-grid" id="colorGrid" style="grid-template-columns:repeat(2,1fr);"></div>'
+      );
+      speak(t("colorClash") + ". " + t("chooseInkColor") + ". " + target + ".");
+
+      var grid = document.getElementById("colorGrid");
+      options.forEach(function (option) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.textContent = option.label;
+        card.style.background = "#fff";
+        card.style.color = option.value;
+        card.style.borderColor = option.value;
+
+        card.addEventListener("click", function () {
+          var isCorrect = option.label === colors[inkIndex].label;
+          if (isCorrect) {
+            correct += 1;
+            speak(t("correct"));
+          } else {
+            speak(t("notQuite"));
+          }
+
+          count += 1;
+          setTimeout(function () {
+            if (count < rounds) renderRound();
+            else finishGame("Color Clash", Math.round((correct / rounds) * 100));
+          }, 550);
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    renderRound();
+  }
+
   function launchGame(key) {
     if (key === "word") startWordGarden();
     else if (key === "memory") startMemoryMatch();
+    else if (key === "picture") startPicturePath();
+    else if (key === "color") startColorClash();
     else startPicturePath();
   }
   window.launchGame = launchGame;
@@ -476,6 +540,7 @@
       + '<button class="btn full" type="button" onclick="launchGame(\'word\')">🌱 ' + t("wordGarden") + " — " + t("language") + "</button>"
       + '<button class="btn full" type="button" onclick="launchGame(\'memory\')">🧠 ' + t("memoryMatch") + " — " + t("memory") + "</button>"
       + '<button class="btn full" type="button" onclick="launchGame(\'picture\')">🔍 ' + t("picturePath") + " — " + t("focus") + "</button>"
+      + '<button class="btn full" type="button" onclick="launchGame(\'color\')">🎨 ' + t("colorClash") + " — " + t("executiveFunction") + "</button>"
       + "</div>"
     );
     speak(t("chooseSession"));
