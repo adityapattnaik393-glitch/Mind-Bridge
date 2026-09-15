@@ -379,6 +379,28 @@ async function getPatientAIContext(auth) {
     };
 }
 
+/* ---- Helper: Analyze Patient Difficulty Level ------------------------- */
+async function analyzeDifficultyLevel(auth) {
+    const { data: scores, error } = await auth.db
+        .from("game_scores")
+        .select("score, created_at")
+        .eq("user_id", auth.user.id)
+        .eq("game_type", "Word Garden")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+    if (error || !scores || scores.length === 0) {
+        return "easy";
+    }
+
+    const avgScore = scores.reduce((sum, score) => sum + score.score, 0) / scores.length;
+
+    if (avgScore >= 80) return "hard";
+    if (avgScore >= 60) return "medium";
+    if (avgScore >= 40) return "easy";
+    return "very-easy";
+}
+
 app.get("/api/profile", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
@@ -700,7 +722,8 @@ app.post("/api/ai/word-question", async (req, res) => {
         const context = await getPatientAIContext(auth);
         const usedWords = Array.isArray(req.body?.usedWords) ? req.body.usedWords : [];
         const safeUsedWords = usedWords.map((word) => String(word).trim()).filter(Boolean).slice(-100);
-        const prompt = `Generate a simple vocabulary exercise for an elderly patient.
+        const difficulty = await analyzeDifficultyLevel(auth);
+        const prompt = `Generate a vocabulary exercise for an elderly patient.
 
 PATIENT:
 Name: ${context.patient.name}
@@ -713,14 +736,22 @@ ${JSON.stringify(context.recentGames.slice(0, 5))}
 WORDS ALREADY USED:
 ${JSON.stringify(safeUsedWords)}
 
+DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+
 Generate ONE NEW vocabulary question.
+
+Difficulty Guidelines:
+- VERY-EASY: Simple everyday words (apple, happy, walk)
+- EASY: Common words with synonyms (joyful, stroll, fruit)
+- MEDIUM: Less common but recognizable words (serene, amble, peculiar)
+- HARD: More advanced vocabulary (eloquent, meander, ephemeral)
 
 Rules:
 1. Do NOT repeat any previously used word
-2. Use simple, everyday vocabulary
+2. Use simple, everyday vocabulary appropriate for the difficulty level
 3. Create exactly 4 options
 4. One option must be the correct answer
-5. Avoid obscure words
+5. Avoid obscure words unless difficulty is HARD
 6. Use familiar objects, foods, places, emotions
 
 Respond ONLY with this exact JSON format:
@@ -728,7 +759,8 @@ Respond ONLY with this exact JSON format:
   "prompt": "Which word means happy?",
   "options": ["Joyful", "Chair", "Rain", "Window"],
   "answer": "Joyful",
-  "word": "Joyful"
+    "word": "Joyful",
+    "difficulty": "${difficulty}"
 }
 
 Do not include any other text.`;
@@ -752,7 +784,7 @@ Do not include any other text.`;
             return res.status(409).json({ error: "Word repeated. Try again." });
         }
 
-        res.json(question);
+        res.json({ ...question, difficulty: question.difficulty || difficulty });
     } catch (error) {
         console.error("Word Garden AI error:", error.message);
         res.status(500).json({ error: "Unable to generate a new word exercise." });

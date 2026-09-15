@@ -268,8 +268,21 @@
 
   var sessionStartedAt = 0;
 
-  function startWordGarden() {
+  async function startWordGarden() {
     var questions = I18N.wordSets();
+    var difficulty = "easy";
+    try {
+      var generated = await MB.api("/api/ai/word-question", {
+        method: "POST",
+        body: JSON.stringify({ usedWords: [] })
+      });
+      if (generated.prompt && Array.isArray(generated.options) && generated.options.length === 4) {
+        questions = [generated].concat(questions.slice(1));
+      }
+      difficulty = generated.difficulty || difficulty;
+    } catch (error) {
+      console.error("Word Garden AI question unavailable:", error.message);
+    }
     var index = 0;
     var correct = 0;
     sessionStartedAt = Date.now();
@@ -279,6 +292,7 @@
       openModal(
         "<h3>🌱 " + t("wordGarden") + "</h3>"
         + '<p class="sub sans">' + t("questionOf", { i: index + 1, n: questions.length }) + "</p>"
+        + '<div id="wordDifficulty" style="text-align:center;margin:10px 0;font-weight:bold;color:#66bb6a;">📊 Difficulty: <span id="difficultyLevel">' + MB.escapeHtml(difficulty.toUpperCase()) + "</span></div>"
         + '<p class="prompt">' + MB.escapeHtml(question.prompt) + "</p>"
         + '<div class="word-grid">'
         + question.options.map(function (option) {
@@ -508,57 +522,6 @@
 
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 
-  /* ============================================================ MINDBRIDGE AI CHAT */
-
-  var aiChatForm = document.getElementById("aiChatForm");
-  var aiChatInput = document.getElementById("aiChatInput");
-  var aiChatMessages = document.getElementById("aiChatMessages");
-  var aiChatSend = document.getElementById("aiChatSend");
-
-  function addAIMessage(text, type) {
-    var message = document.createElement("div");
-    message.className = type === "user" ? "user-message" : "ai-message";
-    message.textContent = text;
-    aiChatMessages.appendChild(message);
-    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
-  }
-
-  if (aiChatForm) {
-    aiChatForm.addEventListener("submit", async function (event) {
-      event.preventDefault();
-      var message = aiChatInput.value.trim();
-      if (!message) return;
-
-      addAIMessage(message, "user");
-      aiChatInput.value = "";
-      aiChatInput.disabled = true;
-      aiChatSend.disabled = true;
-
-      var thinking = document.createElement("div");
-      thinking.className = "ai-message";
-      thinking.textContent = "Thinking...";
-      aiChatMessages.appendChild(thinking);
-
-      try {
-        var result = await MB.api("/api/ai/chat", {
-          method: "POST",
-          body: JSON.stringify({ message: message })
-        });
-        thinking.remove();
-        addAIMessage(result.reply, "ai");
-        speak(result.reply);
-      } catch (error) {
-        thinking.remove();
-        addAIMessage("I'm having trouble connecting. Please try again.", "ai");
-        handleError(error);
-      } finally {
-        aiChatInput.disabled = false;
-        aiChatSend.disabled = false;
-        aiChatInput.focus();
-      }
-    });
-  }
-
   (async function boot() {
     try {
       await loadSummary(false);
@@ -568,3 +531,74 @@
     }
   })();
 })();
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const helperButton = document.getElementById("aiHelperButton");
+    const chatBox = document.getElementById("aiChatBox");
+    const closeButton = document.getElementById("closeAiChat");
+    const input = document.getElementById("aiChatInput");
+    const sendButton = document.getElementById("aiSendBtn");
+    const messages = document.getElementById("aiChatMessages");
+
+    if (!helperButton || !chatBox || !closeButton || !input || !sendButton || !messages) return;
+
+    helperButton.addEventListener("click", function () {
+      chatBox.classList.add("active");
+
+      setTimeout(function () {
+        input.focus();
+      }, 100);
+    });
+
+    closeButton.addEventListener("click", function () {
+      chatBox.classList.remove("active");
+    });
+
+    function addMessage(text, type) {
+      const message = document.createElement("div");
+      message.className = "ai-message " + (type === "user" ? "ai-user-message" : "ai-bot-message");
+      message.innerHTML = '<div class="ai-message-icon">🧠</div>'
+        + '<div class="ai-message-text"></div>';
+      message.querySelector(".ai-message-text").textContent = text;
+      messages.appendChild(message);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text || sendButton.disabled) return;
+
+      addMessage(text, "user");
+      input.value = "";
+      input.disabled = true;
+      sendButton.disabled = true;
+
+      const typing = document.createElement("div");
+      typing.className = "ai-message ai-bot-message";
+      typing.innerHTML = '<div class="ai-message-icon">🧠</div>'
+        + '<div class="ai-message-text ai-typing"><span></span><span></span><span></span></div>';
+      messages.appendChild(typing);
+      messages.scrollTop = messages.scrollHeight;
+
+      try {
+        const result = await MB.api("/api/ai/chat", {
+          method: "POST",
+          body: JSON.stringify({ message: text })
+        });
+        typing.remove();
+        addMessage(result.reply || "I'm here with you. Tell me more.", "bot");
+      } catch (error) {
+        typing.remove();
+        addMessage(error.message || "I'm having trouble connecting. Please try again.", "bot");
+      } finally {
+        input.disabled = false;
+        sendButton.disabled = false;
+        input.focus();
+      }
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") sendMessage();
+    });
+  });
