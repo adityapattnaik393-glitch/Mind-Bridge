@@ -264,11 +264,12 @@ function wellbeingIndex(scores) {
     return { score: Math.max(0, Math.min(100, index)), trend };
 }
 
-/* Starter reminders shown until the caretaker acknowledges them. */
+/* Reminder cadence is measured from the last acknowledgement. */
 const SEED_ALERTS = [
-    { kind: "reminder", title: "Medicine reminder",   body: "Time for the scheduled afternoon medication.",              icon: "medicine" },
-    { kind: "reminder", title: "Hydration check",     body: "A glass of water is due in the next 15 minutes.",           icon: "hydration" },
-    { kind: "reminder", title: "Upcoming appointment", body: "Neurologist check-up scheduled for tomorrow at 10:00 AM.", icon: "appointment" }
+    { kind: "reminder", title: "Medicine reminder", body: "Time for the scheduled medication.", icon: "medicine", intervalHours: 5 },
+    { kind: "reminder", title: "Hydration check", body: "A glass of water is due.", icon: "hydration", intervalHours: 1 },
+    { kind: "reminder", title: "Upcoming appointment", body: "Please check today's appointment schedule.", icon: "appointment", intervalHours: 24 },
+    { kind: "activity", title: "Game exercise", body: "Complete 3 to 5 game exercises today.", icon: "activity", intervalHours: 4, maxPerDay: 3 }
 ];
 
 /* -------------------------------------------------------------------- routes */
@@ -850,7 +851,7 @@ app.get("/api/alerts", async (req, res) => {
         .select("id, alert_title, alert_body, kind, status, created_at")
         .eq("user_id", auth.user.id)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(100);
 
     if (error) return res.status(500).json({ error: error.message });
 
@@ -863,9 +864,17 @@ app.get("/api/alerts", async (req, res) => {
         createdAt: row.created_at
     }));
 
-    const acknowledgedTitles = new Set(logged.map((row) => row.title.toLowerCase()));
+    const now = new Date();
     const pending = SEED_ALERTS
-        .filter((alert) => !acknowledgedTitles.has(alert.title.toLowerCase()))
+        .filter((alert) => {
+            const history = logged
+                .filter((row) => row.title.toLowerCase() === alert.title.toLowerCase())
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const todayCount = history.filter((row) => localDay(new Date(row.createdAt)) === localDay(now)).length;
+            if (alert.maxPerDay && todayCount >= alert.maxPerDay) return false;
+            if (!history.length) return true;
+            return now - new Date(history[0].createdAt) >= alert.intervalHours * 60 * 60 * 1000;
+        })
         .map((alert, index) => ({
             id: `seed-${index}`,
             title: alert.title,

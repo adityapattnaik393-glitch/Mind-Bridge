@@ -244,4 +244,5 @@
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 
   load();
+  window.setInterval(load, 60000);
 })();

@@ -585,6 +585,10 @@
     renderAlerts(state.alerts);
   }
 
+  window.setInterval(function () {
+    loadAlerts().catch(handleError);
+  }, 60000);
+
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 
   (async function boot() {
