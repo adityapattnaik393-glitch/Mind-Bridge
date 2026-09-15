@@ -96,7 +96,7 @@
 
     var hour = new Date().getHours();
     var greetKey = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-    MB.setText("greetTime", t(greetKey) + ", " + t("caretakerSuffix"));
+    MB.setText("greetTime", t(greetKey));
   }
 
   function renderProfile(profile) {
