@@ -81,8 +81,6 @@
     MB.setText("syncLabel", t("synced"));
     MB.setText("logoutBtn", t("signOut"));
     MB.setText("streakLabel", t("dayStreak"));
-    MB.setText("weeklyTitle", t("weeklyProgress"));
-    MB.setText("weeklySub", t("weeklyProgressSub"));
     MB.setText("wellbeingTitle", t("wellbeing"));
     MB.setText("wellbeingSub", t("wellbeingSub"));
     MB.setText("wellbeingOutOf", t("outOf"));
@@ -113,24 +111,6 @@
     MB.setText("minsActive", totals.minutesInWindow);
     MB.setText("bestScore", totals.bestScore + "%");
     MB.setText("streakNum", totals.streak);
-  }
-
-  function renderBars(series, highlightToday) {
-    document.getElementById("barsWrap").innerHTML = series.map(function (day) {
-      var empty = day.sessions === 0;
-      var gold = day.avgScore >= 95;
-      var height = empty ? 4 : Math.max(day.avgScore, 6);
-      var classes = ["bar"];
-      if (empty) classes.push("empty");
-      else if (gold) classes.push("gold");
-      if (highlightToday && day.isToday) classes.push("newbar");
-
-      return '<div class="bar-col">'
-        + '<span class="bar-val">' + (empty ? "—" : day.avgScore + "%") + "</span>"
-        + '<div class="bar-track"><div class="' + classes.join(" ") + '" style="height:' + height + '%"></div></div>'
-        + '<span class="bar-day' + (day.isToday ? " today" : "") + '">' + MB.escapeHtml(day.label) + "</span>"
-        + "</div>";
-    }).join("");
   }
 
   var CIRCUMFERENCE = 2 * Math.PI * 72;
@@ -574,7 +554,6 @@
     applyLanguage(summary.profile.language);
     renderProfile(summary.profile);
     renderStats(summary.totals);
-    renderBars(summary.series, Boolean(animate));
     renderWellbeing(summary.wellbeing, summary.series);
     renderActivity(summary.recent);
     markSynced();
