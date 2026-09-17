@@ -119,6 +119,51 @@ header.topbar {
 }
 .logout-btn:hover { background: var(--surface-3); color: var(--ink); }
 
+/* --------------------------------------------------------- dashboard menu */
+.menu-btn {
+  width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 12px;
+  background: #fff; display: inline-flex; flex-direction: column; justify-content: center;
+  align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0;
+  transition: background .15s ease, border-color .15s ease;
+}
+.menu-btn:hover { background: var(--surface-2); border-color: var(--teal-500); }
+.menu-btn span { width: 17px; height: 2px; border-radius: 2px; background: var(--teal-800); }
+.dashboard-drawer {
+  position: fixed; inset: 0 auto 0 0; width: min(320px, 88vw); padding: 28px 22px;
+  background: #fff; box-shadow: var(--shadow-lg); transform: translateX(-105%);
+  transition: transform .25s ease; z-index: 70; display: flex; flex-direction: column;
+}
+.dashboard-drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.drawer-kicker {
+  margin: 0 0 4px; color: var(--teal-500); font: 700 11px/1 var(--sans);
+  letter-spacing: 1.2px; text-transform: uppercase;
+}
+.drawer-head h2 { margin: 0; font-size: 23px; }
+.drawer-close {
+  width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-2);
+  color: var(--ink-soft); font: 400 24px/1 var(--sans); cursor: pointer;
+}
+.drawer-close:hover { background: var(--surface-3); color: var(--ink); }
+.drawer-nav { display: grid; gap: 6px; margin-top: 38px; }
+.drawer-link {
+  display: flex; align-items: center; gap: 13px; width: 100%; padding: 13px 14px;
+  border: 0; border-radius: 12px; background: transparent; color: var(--ink-soft);
+  font: 600 14px var(--sans); text-align: left; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.drawer-link:hover { background: var(--surface-2); color: var(--ink); }
+.drawer-link.active { background: var(--teal-100); color: var(--teal-800); }
+.drawer-icon {
+  width: 25px; color: currentColor; font: 22px/1 var(--serif); text-align: center;
+}
+.drawer-overlay {
+  position: fixed; inset: 0; border: 0; background: rgba(14,25,22,.38);
+  opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 60;
+}
+.drawer-overlay.show { opacity: 1; pointer-events: auto; }
+.dashboard-view[hidden] { display: none !important; }
+
 /* -------------------------------------------------------------------- hero */
 .hero {
   background: radial-gradient(120% 160% at 15% 20%, #163F3B 0%, var(--teal-900) 55%, #0B2422 100%);

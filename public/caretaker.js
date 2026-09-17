@@ -12,6 +12,34 @@
   var t = I18N.t;
   var days = 7;
 
+  /* The drawer changes which already-rendered dashboard group is visible. */
+  function setView(view) {
+    document.querySelectorAll(".dashboard-view").forEach(function (section) {
+      section.hidden = section.dataset.view !== view;
+    });
+    document.querySelectorAll(".drawer-link").forEach(function (link) {
+      var active = link.dataset.viewTarget === view;
+      link.classList.toggle("active", active);
+      if (active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    });
+  }
+
+  function closeDrawer() {
+    document.getElementById("dashboardDrawer").classList.remove("open");
+    document.getElementById("drawerOverlay").classList.remove("show");
+    document.getElementById("dashboardDrawer").setAttribute("aria-hidden", "true");
+    document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
+  }
+
+  function openDrawer() {
+    document.getElementById("dashboardDrawer").classList.add("open");
+    document.getElementById("drawerOverlay").classList.add("show");
+    document.getElementById("dashboardDrawer").setAttribute("aria-hidden", "false");
+    document.getElementById("menuBtn").setAttribute("aria-expanded", "true");
+    document.getElementById("drawerClose").focus();
+  }
+
   /* ============================================================ rendering */
 
   function renderHero(profile) {
@@ -240,6 +268,20 @@
     });
     load();
   });
+
+  document.getElementById("menuBtn").addEventListener("click", openDrawer);
+  document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+  document.getElementById("drawerOverlay").addEventListener("click", closeDrawer);
+  document.querySelectorAll(".drawer-link").forEach(function (link) {
+    link.addEventListener("click", function () {
+      setView(link.dataset.viewTarget);
+      closeDrawer();
+    });
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeDrawer();
+  });
+  setView("home");
 
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 

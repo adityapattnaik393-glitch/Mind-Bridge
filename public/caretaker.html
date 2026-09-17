@@ -41,6 +41,9 @@
 
   <!-- ------------------------------------------------------------ header -->
   <header class="topbar">
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Open dashboard menu" aria-controls="dashboardDrawer" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
     <div class="brand">
       <div class="mark">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -65,8 +68,30 @@
     </div>
   </header>
 
+  <aside class="dashboard-drawer" id="dashboardDrawer" aria-label="Dashboard navigation" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <p class="drawer-kicker">MindBridge</p>
+        <h2>Caregiver space</h2>
+      </div>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="Close dashboard menu">&times;</button>
+    </div>
+    <nav class="drawer-nav">
+      <button class="drawer-link active" type="button" data-view-target="home" aria-current="page">
+        <span class="drawer-icon">⌂</span><span>Home</span>
+      </button>
+      <button class="drawer-link" type="button" data-view-target="sessions">
+        <span class="drawer-icon">▦</span><span>Sessions</span>
+      </button>
+      <button class="drawer-link" type="button" data-view-target="alerts">
+        <span class="drawer-icon">◌</span><span>Caregiver Alerts</span>
+      </button>
+    </nav>
+  </aside>
+  <button class="drawer-overlay" id="drawerOverlay" type="button" aria-label="Close dashboard menu"></button>
+
   <!-- -------------------------------------------------------------- hero -->
-  <section class="hero">
+  <section class="hero dashboard-view" data-view="home">
     <div class="hero-top">
       <div class="hero-greet">
         <p class="eyebrow sans" id="greetTime">Caretaker dashboard</p>
@@ -85,7 +110,7 @@
   </section>
 
   <!-- ------------------------------------------------------ range picker -->
-  <div class="range-bar">
+  <div class="range-bar dashboard-view" data-view="home">
     <span class="label">Showing</span>
     <div class="range" id="rangePicker">
       <button type="button" data-days="7" class="active">Last 7 days</button>
@@ -95,7 +120,7 @@
   </div>
 
   <!-- ------------------------------------------------------------- stats -->
-  <section class="stats four">
+  <section class="stats four dashboard-view" data-view="home">
     <div class="stat-card">
       <div class="ic teal">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
@@ -126,7 +151,7 @@
   </section>
 
   <!-- ------------------------------------------- daily chart + wellbeing -->
-  <section class="grid2">
+  <section class="grid2 dashboard-view" data-view="home">
     <div class="panel">
       <div class="panel-head">
         <div>
@@ -169,7 +194,7 @@
   </section>
 
   <!-- ---------------------------------------------- breakdown + day table -->
-  <section class="grid2">
+  <section class="grid2 dashboard-view" data-view="home">
     <div class="panel">
       <h3>By exercise</h3>
       <p class="sub">Where the patient is strongest, all time</p>
@@ -191,7 +216,7 @@
   </section>
 
   <!-- ------------------------------------------------------- session log -->
-  <section class="grid1">
+  <section class="grid1 dashboard-view" data-view="sessions">
     <div class="panel">
       <h3>Every session</h3>
       <div class="table-scroll">
@@ -206,7 +231,7 @@
   </section>
 
   <!-- ------------------------------------------------------- alerts log -->
-  <section class="grid1">
+  <section class="grid1 dashboard-view" data-view="alerts">
     <div class="panel">
       <h3>Caregiver alert log</h3>
       <p class="sub">Reminders the caretaker has acknowledged</p>
