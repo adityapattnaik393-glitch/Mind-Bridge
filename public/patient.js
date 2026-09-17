@@ -249,6 +249,81 @@
   /* ============================================================== games */
 
   var sessionStartedAt = 0;
+  var difficultyOrder = ["easy", "medium", "hard"];
+  var difficultyLabels = { easy: "Easy", medium: "Medium", hard: "Hard" };
+  var difficultyIcons = { easy: "🌱", medium: "🌿", hard: "🌳" };
+  var selectedDifficulty = "easy";
+  var difficultyInitialised = false;
+  var completedGames = { easy: {}, medium: {}, hard: {} };
+
+  var GAME_CATALOG = {
+    easy: [
+      { key: "word", icon: "🌱", name: "Word Garden", category: "Language" },
+      { key: "memory", icon: "🧠", name: "Memory Match", category: "Memory" },
+      { key: "picture", icon: "🔍", name: "Picture Path", category: "Focus" },
+      { key: "category", icon: "🧺", name: "Sort & Match", category: "Reasoning" }
+    ],
+    medium: [
+      { key: "word", icon: "🌿", name: "Word Garden", category: "Language" },
+      { key: "memory", icon: "🧩", name: "Memory Match", category: "Memory" },
+      { key: "picture", icon: "🧭", name: "Picture Path", category: "Focus" },
+      { key: "color", icon: "🎨", name: "Color Clash", category: "Executive Function" },
+      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" }
+    ],
+    hard: [
+      { key: "word", icon: "🌳", name: "Word Garden", category: "Language" },
+      { key: "memory", icon: "🧠", name: "Memory Match", category: "Memory" },
+      { key: "picture", icon: "🗺️", name: "Picture Path", category: "Focus" },
+      { key: "color", icon: "🎨", name: "Color Clash", category: "Executive Function" },
+      { key: "odd", icon: "🟡", name: "Odd One Out", category: "Reasoning" },
+      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" }
+    ]
+  };
+
+  function configuredDifficulty(profile) {
+    var configured = profile && (profile.difficulty || profile.stage || profile.difficultyLevel);
+    var stored = window.localStorage.getItem("mindbridgeDifficulty");
+    configured = String(configured || stored || "easy").toLowerCase();
+    return difficultyOrder.indexOf(configured) > -1 ? configured : "easy";
+  }
+
+  function progressStorageKey() {
+    return "mindbridgeGameProgress:" + (state.profile && state.profile.id ? state.profile.id : "guest");
+  }
+
+  function loadGameProgress() {
+    try {
+      var saved = JSON.parse(window.localStorage.getItem(progressStorageKey()) || "null");
+      if (saved && saved.easy && saved.medium && saved.hard) completedGames = saved;
+    } catch (error) {
+      completedGames = { easy: {}, medium: {}, hard: {} };
+    }
+  }
+
+  function saveGameProgress() {
+    window.localStorage.setItem(progressStorageKey(), JSON.stringify(completedGames));
+  }
+
+  function stageComplete(stage) {
+    return GAME_CATALOG[stage].every(function (game) { return completedGames[stage][game.key]; });
+  }
+
+  function markGameComplete(gameKey) {
+    completedGames[selectedDifficulty][gameKey] = true;
+    saveGameProgress();
+    if (!stageComplete(selectedDifficulty)) return;
+    var currentIndex = difficultyOrder.indexOf(selectedDifficulty);
+    if (currentIndex < difficultyOrder.length - 1) {
+      selectedDifficulty = difficultyOrder[currentIndex + 1];
+      openModal(
+        "<h3>Stage complete!</h3>"
+        + '<p class="sub sans">All ' + difficultyLabels[difficultyOrder[currentIndex]] + " exercises are complete.</p>"
+        + '<button class="btn full" id="nextStageBtn" type="button">' + difficultyIcons[selectedDifficulty] + " Continue to " + difficultyLabels[selectedDifficulty] + "</button>"
+      );
+      speak("Stage complete. Continue to " + difficultyLabels[selectedDifficulty] + ".");
+      document.getElementById("nextStageBtn").addEventListener("click", showGameChooser);
+    }
+  }
 
   async function startWordGarden() {
     var questions = I18N.wordSets();
@@ -256,7 +331,7 @@
     try {
       var generated = await MB.api("/api/ai/word-question", {
         method: "POST",
-        body: JSON.stringify({ usedWords: [] })
+        body: JSON.stringify({ usedWords: [], difficulty: selectedDifficulty })
       });
       if (generated.prompt && Array.isArray(generated.options) && generated.options.length === 4) {
         questions = [generated].concat(questions.slice(1));
@@ -265,6 +340,7 @@
     } catch (error) {
       console.error("Word Garden AI question unavailable:", error.message);
     }
+    questions = questions.slice(0, selectedDifficulty === "easy" ? 3 : selectedDifficulty === "medium" ? 4 : 5);
     var index = 0;
     var correct = 0;
     sessionStartedAt = Date.now();
@@ -306,7 +382,9 @@
   }
 
   function startMemoryMatch() {
-    var icons = ["🌸", "🍎", "⭐", "🐦", "🌸", "🍎", "⭐", "🐦"];
+    var pairCount = selectedDifficulty === "easy" ? 4 : selectedDifficulty === "medium" ? 6 : 8;
+    var iconPool = ["🌸", "🍎", "⭐", "🐦", "🍀", "🌈", "🎈", "🍋"];
+    var icons = iconPool.slice(0, pairCount).concat(iconPool.slice(0, pairCount));
     var shuffled = icons
       .map(function (value) { return { value: value, sort: Math.random() }; })
       .sort(function (a, b) { return a.sort - b.sort; })
@@ -320,7 +398,7 @@
     openModal(
       "<h3>🧠 " + t("memoryMatch") + "</h3>"
       + '<p class="sub sans">' + t("findPairs") + "</p>"
-      + '<div class="word-grid" id="memGrid" style="grid-template-columns:repeat(4,1fr);"></div>'
+      + '<div class="word-grid" id="memGrid" style="grid-template-columns:repeat(' + (pairCount > 4 ? 4 : 4) + ',1fr);"></div>'
     );
     speak(t("memoryMatch") + ". " + t("findPairs"));
 
@@ -352,8 +430,8 @@
           matched += 1;
           flipped = [];
           speak(t("matched"));
-          if (matched === 4) {
-            var score = Math.max(40, 100 - (moves - 4) * 8);
+          if (matched === pairCount) {
+            var score = Math.max(40, 100 - (moves - pairCount) * (selectedDifficulty === "hard" ? 6 : 8));
             setTimeout(function () { finishGame("Memory Match", score); }, 500);
           }
         } else {
@@ -371,9 +449,11 @@
   }
 
   function startPicturePath() {
-    var symbols = ["🔺", "🔵", "⬛", "⭐", "🔶", "🟢"];
+    var symbols = ["🔺", "🔵", "⬛", "⭐", "🔶", "🟢", "🟣", "🟧"];
     var names = I18N.shapeNames();
-    var sequence = [0, 0, 0, 0].map(function () { return Math.floor(Math.random() * 6); });
+    var symbolCount = selectedDifficulty === "easy" ? 6 : selectedDifficulty === "medium" ? 7 : 8;
+    var sequenceLength = selectedDifficulty === "easy" ? 3 : selectedDifficulty === "medium" ? 4 : 5;
+    var sequence = new Array(sequenceLength).fill(0).map(function () { return Math.floor(Math.random() * symbolCount); });
     var step = 0;
     var wrong = 0;
     sessionStartedAt = Date.now();
@@ -387,7 +467,7 @@
     speak(t("picturePath") + ". " + sequence.map(function (i) { return names[i]; }).join(", "));
 
     var grid = document.getElementById("ppGrid");
-    [0, 1, 2, 3, 4, 5].sort(function () { return Math.random() - 0.5; }).forEach(function (index) {
+    Array.from({ length: symbolCount }, function (_, index) { return index; }).sort(function () { return Math.random() - 0.5; }).forEach(function (index) {
       var card = document.createElement("div");
       card.className = "word-card";
       card.style.fontSize = "26px";
@@ -413,7 +493,7 @@
   }
 
   function startColorClash() {
-    var rounds = 5;
+    var rounds = selectedDifficulty === "easy" ? 3 : selectedDifficulty === "medium" ? 5 : 7;
     var correct = 0;
     var count = 0;
     var colors = [
@@ -472,11 +552,137 @@
     renderRound();
   }
 
+  function startCategorySort() {
+    var rounds = 4;
+    var round = 0;
+    var correct = 0;
+    var sets = [
+      { category: "Fruit", answer: "🍎", options: ["🍎", "🧦", "🚲", "📘"] },
+      { category: "Animal", answer: "🐶", options: ["🌼", "🐶", "🪑", "✏️"] },
+      { category: "Clothing", answer: "👕", options: ["🍋", "🏠", "👕", "🎵"] },
+      { category: "Transport", answer: "🚗", options: ["🚗", "🍞", "🌳", "📚"] }
+    ];
+
+    sessionStartedAt = Date.now();
+
+    function renderRound() {
+      var current = sets[round];
+      openModal(
+        "<h3>🧺 Sort & Match</h3>"
+        + '<p class="sub sans">Choose the ' + current.category + ".</p>"
+        + '<div class="word-grid" id="categoryGrid" style="grid-template-columns:repeat(2,1fr);"></div>'
+      );
+      speak("Sort and Match. Choose the " + current.category + ".");
+      current.options.forEach(function (option) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.style.fontSize = "30px";
+        card.textContent = option;
+        card.addEventListener("click", function () {
+          if (option === current.answer) { correct += 1; card.classList.add("correct"); speak(t("correct")); }
+          else { card.classList.add("wrong"); speak(t("notQuite")); }
+          setTimeout(function () {
+            round += 1;
+            if (round < rounds) renderRound();
+            else finishGame("Sort & Match", Math.round((correct / rounds) * 100));
+          }, 500);
+        });
+        document.getElementById("categoryGrid").appendChild(card);
+      });
+    }
+    renderRound();
+  }
+
+  function startOddOneOut() {
+    var rounds = 4;
+    var round = 0;
+    var correct = 0;
+    var sets = [
+      ["🍎", "🍐", "🍊", "🐶"],
+      ["🔵", "🔵", "⭐", "🔵"],
+      ["🚗", "🚲", "🚌", "🍞"],
+      ["🌸", "🌸", "🌸", "🌵"]
+    ];
+    sessionStartedAt = Date.now();
+
+    function renderRound() {
+      var options = sets[round];
+      var odd = round === 0 ? 3 : round === 1 ? 2 : round === 2 ? 3 : 3;
+      openModal(
+        "<h3>🟡 Odd One Out</h3>"
+        + '<p class="sub sans">Tap the one that is different.</p>'
+        + '<div class="word-grid" id="oddGrid" style="grid-template-columns:repeat(2,1fr);"></div>'
+      );
+      speak("Odd One Out. Tap the one that is different.");
+      options.forEach(function (option, index) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.style.fontSize = "30px";
+        card.textContent = option;
+        card.addEventListener("click", function () {
+          if (index === odd) { correct += 1; card.classList.add("correct"); speak(t("correct")); }
+          else { card.classList.add("wrong"); speak(t("notQuite")); }
+          setTimeout(function () {
+            round += 1;
+            if (round < rounds) renderRound();
+            else finishGame("Odd One Out", Math.round((correct / rounds) * 100));
+          }, 500);
+        });
+        document.getElementById("oddGrid").appendChild(card);
+      });
+    }
+    renderRound();
+  }
+
+  function startSequenceRecall() {
+    var length = selectedDifficulty === "medium" ? 4 : 5;
+    var symbols = ["🔺", "🔵", "⭐", "🍀", "🌸", "🟠"];
+    var sequence = new Array(length).fill(0).map(function () { return symbols[Math.floor(Math.random() * symbols.length)]; });
+    var options = symbols.slice().sort(function () { return Math.random() - 0.5; });
+    var answer = [];
+    sessionStartedAt = Date.now();
+
+    openModal(
+      "<h3>🔢 Pattern Recall</h3>"
+      + '<p class="sub sans">Remember the pattern.</p>'
+      + '<p class="prompt" id="sequencePrompt" style="font-size:30px;">' + sequence.join(" ") + "</p>"
+    );
+    speak("Pattern Recall. Remember the pattern.");
+    setTimeout(function () {
+      openModal(
+        "<h3>🔢 Pattern Recall</h3>"
+        + '<p class="sub sans">Tap the symbols in the same order.</p>'
+        + '<p class="prompt" id="sequenceAnswer" style="font-size:26px;min-height:38px;"></p>'
+        + '<div class="word-grid" id="sequenceGrid" style="grid-template-columns:repeat(3,1fr);"></div>'
+      );
+      options.forEach(function (option) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.style.fontSize = "26px";
+        card.textContent = option;
+        card.addEventListener("click", function () {
+          answer.push(option);
+          document.getElementById("sequenceAnswer").textContent = answer.join(" ");
+          if (answer.length < sequence.length) return;
+          var score = answer.join("") === sequence.join("") ? 100 : Math.max(40, 100 - answer.filter(function (item, index) { return item !== sequence[index]; }).length * 20);
+          setTimeout(function () { finishGame("Pattern Recall", score); }, 500);
+        });
+        document.getElementById("sequenceGrid").appendChild(card);
+      });
+    }, selectedDifficulty === "hard" ? 2300 : 1700);
+  }
+
   function launchGame(key) {
     if (key === "word") startWordGarden();
     else if (key === "memory") startMemoryMatch();
     else if (key === "picture") startPicturePath();
     else if (key === "color") startColorClash();
+    else if (key === "category") startCategorySort();
+    else if (key === "odd") startOddOneOut();
+    else if (key === "sequence") startSequenceRecall();
     else startPicturePath();
   }
   window.launchGame = launchGame;
@@ -498,6 +704,13 @@
       this.disabled = true;
       closeModal();
       bump("avgCard"); bump("minsCard"); bump("bestCard");
+      var completed = GAME_CATALOG[selectedDifficulty].filter(function (game) {
+        return game.name === name || (name === "Word Garden" && game.key === "word")
+          || (name === "Memory Match" && game.key === "memory")
+          || (name === "Picture Path" && game.key === "picture")
+          || (name === "Color Clash" && game.key === "color");
+      })[0];
+      if (completed) markGameComplete(completed.key);
 
       try {
         await MB.api("/api/scores", {
@@ -511,20 +724,43 @@
     });
   }
 
-  document.getElementById("startBtn").addEventListener("click", function () {
+  function showGameChooser() {
     var name = state.profile ? state.profile.patientName : "";
+    var games = GAME_CATALOG[selectedDifficulty];
+    var completed = games.filter(function (game) { return completedGames[selectedDifficulty][game.key]; }).length;
     openModal(
       "<h3>" + t("chooseSession") + "</h3>"
       + '<p class="sub sans">' + t("chooseSessionSub", { name: MB.escapeHtml(name) }) + "</p>"
-      + '<div style="display:flex;flex-direction:column;gap:10px;">'
-      + '<button class="btn full" type="button" onclick="launchGame(\'word\')">🌱 ' + t("wordGarden") + " — " + t("language") + "</button>"
-      + '<button class="btn full" type="button" onclick="launchGame(\'memory\')">🧠 ' + t("memoryMatch") + " — " + t("memory") + "</button>"
-      + '<button class="btn full" type="button" onclick="launchGame(\'picture\')">🔍 ' + t("picturePath") + " — " + t("focus") + "</button>"
-      + '<button class="btn full" type="button" onclick="launchGame(\'color\')">🎨 ' + t("colorClash") + " — " + t("executiveFunction") + "</button>"
+      + '<div style="display:flex;gap:8px;justify-content:center;margin:16px 0 12px;">'
+      + difficultyOrder.map(function (stage) {
+        var active = stage === selectedDifficulty ? "background:#155249;color:#fff;" : "background:#eef3ef;color:#155249;";
+        return '<button type="button" data-stage="' + stage + '" style="' + active + 'border:0;border-radius:999px;padding:8px 14px;font-weight:700;cursor:pointer;">'
+          + difficultyIcons[stage] + " " + difficultyLabels[stage] + "</button>";
+      }).join("")
+      + "</div>"
+      + '<p class="sub sans" style="text-align:center;margin-bottom:12px;">' + completed + " of " + games.length + " completed</p>"
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">'
+      + games.map(function (game) {
+        var isComplete = completedGames[selectedDifficulty][game.key];
+        var label = game.name + " - " + game.category;
+        return '<button class="word-card" type="button" data-game-key="' + game.key + '" title="' + MB.escapeHtml(label) + '" aria-label="' + MB.escapeHtml(label) + '" style="height:82px;font-size:34px;position:relative;' + (isComplete ? "opacity:.48;" : "") + '">'
+          + game.icon + (isComplete ? '<span style="position:absolute;right:7px;bottom:5px;font-size:14px;">✓</span>' : "") + "</button>";
+      }).join("")
       + "</div>"
     );
+    Array.prototype.forEach.call(modalContent.querySelectorAll("[data-stage]"), function (button) {
+      button.addEventListener("click", function () {
+        selectedDifficulty = button.dataset.stage;
+        showGameChooser();
+      });
+    });
+    Array.prototype.forEach.call(modalContent.querySelectorAll("[data-game-key]"), function (button) {
+      button.addEventListener("click", function () { launchGame(button.dataset.gameKey); });
+    });
     speak(t("chooseSession"));
-  });
+  }
+
+  document.getElementById("startBtn").addEventListener("click", showGameChooser);
 
   /* ============================================================ loading */
 
@@ -550,6 +786,11 @@
     var summary = await MB.api("/api/summary?days=7");
     state.summary = summary;
     state.profile = summary.profile;
+    if (!difficultyInitialised) {
+      selectedDifficulty = configuredDifficulty(state.profile);
+      difficultyInitialised = true;
+    }
+    loadGameProgress();
 
     applyLanguage(summary.profile.language);
     renderProfile(summary.profile);
