@@ -163,6 +163,28 @@ header.topbar {
 }
 .drawer-overlay.show { opacity: 1; pointer-events: auto; }
 .dashboard-view[hidden] { display: none !important; }
+.gift-upload-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gift-upload-card { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.gift-upload-icon { color: var(--teal-500); font: 28px/1 var(--serif); }
+.gift-upload-card h4 { margin: 12px 0 5px; font-size: 18px; }
+.gift-upload-card p { margin: 0 0 16px; color: var(--ink-soft); font: 13px/1.5 var(--sans); }
+.gift-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.recording-status, .gift-feedback { min-height: 18px; margin: 12px 0 0; color: var(--ink-soft); font: 12px/1.4 var(--sans); }
+.gift-feedback { margin-top: 18px; color: var(--teal-700); font-weight: 600; }
+.gift-feedback.error { color: var(--red-600); }
+.appointment-search { display: flex; align-items: center; gap: 10px; max-width: 560px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); color: var(--ink-soft); font: 20px/1 var(--sans); }
+.appointment-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 14px var(--sans); }
+.gift-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gift-card { position: relative; min-height: 170px; overflow: hidden; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.gift-card.locked { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; }
+.gift-lock { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; background: var(--amber-100); color: var(--amber-600); font: 22px/1 var(--sans); }
+.gift-card h4 { margin: 12px 0 5px; font-size: 17px; }
+.gift-card p { margin: 0; color: var(--ink-soft); font: 12.5px/1.45 var(--sans); }
+.gift-card.unlocked { padding: 14px; background: #fff; }
+.gift-card.unlocked audio { width: 100%; margin-top: 12px; }
+.gift-card.unlocked img { display: block; width: 100%; max-height: 210px; object-fit: cover; border-radius: 10px; }
+.gift-badge { display: inline-block; margin-top: 8px; padding: 5px 9px; border-radius: 999px; background: var(--green-100); color: var(--green-700); font: 700 11px var(--sans); }
 
 /* -------------------------------------------------------------------- hero */
 .hero {
@@ -454,4 +476,5 @@ table.data td.strong { font-weight: 700; }
   .streak { align-self: stretch; }
   .auth-card { padding: 26px 22px; }
   .auth-form .field-row { grid-template-columns: 1fr; }
+  .gift-upload-grid, .gift-list { grid-template-columns: 1fr; }
 }

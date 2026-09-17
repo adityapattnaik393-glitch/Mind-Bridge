@@ -40,6 +40,71 @@
     document.getElementById("drawerClose").focus();
   }
 
+  function giftFeedback(message, isError) {
+    var feedback = document.getElementById("giftFeedback");
+    feedback.textContent = message;
+    feedback.classList.toggle("error", Boolean(isError));
+  }
+
+  function fileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function saveGift(file, type) {
+    if (!file) return;
+    giftFeedback("Saving gift...", false);
+    try {
+      await MB.api("/api/gifts", { method: "POST", body: JSON.stringify({
+        type: type, fileName: file.name || (type + "-gift"), mimeType: file.type,
+        mediaData: await fileAsDataUrl(file)
+      }) });
+      giftFeedback("Gift saved. It will appear locked until the patient reaches 90%.", false);
+      document.getElementById(type === "audio" ? "recordingStatus" : "photoStatus").textContent =
+        type === "audio" ? "Audio gift saved." : "Photo gift saved.";
+    } catch (error) {
+      giftFeedback(error.message || "The gift could not be saved.", true);
+    }
+  }
+
+  var recorder;
+  var recordingChunks = [];
+  var recordButton = document.getElementById("recordGiftBtn");
+  recordButton.addEventListener("click", async function () {
+    if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      giftFeedback("Voice recording is not supported in this browser. Choose an audio file instead.", true);
+      return;
+    }
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      var mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg"].find(function (type) {
+        return MediaRecorder.isTypeSupported(type);
+      }) || "";
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : undefined);
+      recordingChunks = [];
+      recorder.ondataavailable = function (event) { if (event.data.size) recordingChunks.push(event.data); };
+      recorder.onstop = function () {
+        stream.getTracks().forEach(function (track) { track.stop(); });
+        var blob = new Blob(recordingChunks, { type: recorder.mimeType || "audio/webm" });
+        saveGift(new File([blob], "voice-gift.webm", { type: blob.type }), "audio");
+        document.getElementById("recordingStatus").textContent = "Recording saved.";
+        recordButton.textContent = "Record voice";
+      };
+      recorder.start();
+      recordButton.textContent = "Stop recording";
+      document.getElementById("recordingStatus").textContent = "Recording... tap Stop recording when finished.";
+    } catch (error) {
+      giftFeedback("Microphone access is needed to record a voice gift.", true);
+    }
+  });
+  document.getElementById("audioGiftInput").addEventListener("change", function () { saveGift(this.files[0], "audio"); });
+  document.getElementById("photoGiftInput").addEventListener("change", function () { saveGift(this.files[0], "photo"); });
+
   /* ============================================================ rendering */
 
   function renderHero(profile) {

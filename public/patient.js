@@ -238,6 +238,27 @@
     });
   }
 
+  function renderGifts(payload) {
+    var list = document.getElementById("patientGifts");
+    if (!payload.gifts.length) {
+      list.innerHTML = '<div class="gift-card locked"><div class="gift-lock">⌑</div><h4>A gift is waiting</h4><p>Your caretaker can add an audio message or photo for you.</p></div>';
+      return;
+    }
+
+    list.innerHTML = payload.gifts.map(function (gift) {
+      if (!payload.unlocked) {
+        return '<div class="gift-card locked"><div class="gift-lock">🔒</div><h4>Locked gift</h4><p>Reach 90% or higher in an easy game to unlock this gift.</p></div>';
+      }
+      var media = gift.gift_type === "audio"
+        ? '<audio controls preload="metadata" src="' + MB.escapeHtml(gift.media_data) + '"></audio>'
+        : '<img src="' + MB.escapeHtml(gift.media_data) + '" alt="A gift from your caretaker">';
+      return '<div class="gift-card unlocked">' + media + '<h4>' + MB.escapeHtml(gift.title) + '</h4><span class="gift-badge">Unlocked</span></div>';
+    }).join("");
+    MB.setText("giftsSub", payload.unlocked
+      ? "Your caretaker left you a special gift."
+      : "Reach 90% or higher in an easy game to unlock a gift.");
+  }
+
   async function acknowledgeAlert(row) {
     var title = row.dataset.title;
     var body = row.dataset.body;
@@ -1004,9 +1025,10 @@
       try {
         await MB.api("/api/scores", {
           method: "POST",
-          body: JSON.stringify({ name: name, score: score, attempts: 1, durationSeconds: duration })
+          body: JSON.stringify({ name: name, score: score, attempts: 1, durationSeconds: duration, difficulty: "easy" })
         });
         await loadSummary(true);
+        await loadGifts();
       } catch (error) {
         handleError(error);
       }
@@ -1085,6 +1107,11 @@
     renderAlerts(state.alerts);
   }
 
+  async function loadGifts() {
+    var gifts = await MB.api("/api/gifts");
+    renderGifts(gifts);
+  }
+
   window.setInterval(function () {
     loadAlerts().catch(handleError);
   }, 60000);
@@ -1095,6 +1122,7 @@
     try {
       await loadSummary(false);
       await loadAlerts();
+      await loadGifts();
     } catch (error) {
       handleError(error);
     }

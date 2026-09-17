@@ -53,7 +53,7 @@ function dbAs(token) {
     });
 }
 
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 app.use(express.static(publicPath, { extensions: ["html"] }));
 
 /* ------------------------------------------------------------------ helpers */
@@ -530,7 +530,7 @@ app.post("/api/scores", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
 
-    const { name, score, attempts = 1, durationSeconds = 180 } = req.body || {};
+    const { name, score, attempts = 1, durationSeconds = 180, difficulty = "easy" } = req.body || {};
     const numericScore = Number(score);
     if (!name || !Number.isFinite(numericScore)) {
         return res.status(400).json({ error: "A game name and score are required." });
@@ -544,7 +544,8 @@ app.post("/api/scores", async (req, res) => {
             category: CATEGORY_BY_GAME[name] || "Cognitive",
             score: Math.max(0, Math.min(100, Math.round(numericScore))),
             attempts: Math.max(1, Number(attempts) || 1),
-            duration_seconds: Math.max(30, Number(durationSeconds) || 180)
+            duration_seconds: Math.max(30, Number(durationSeconds) || 180),
+            difficulty: difficulty === "hard" || difficulty === "medium" ? difficulty : "easy"
         })
         .select("id, game_type, category, score, attempts, duration_seconds, created_at")
         .single();
@@ -912,6 +913,50 @@ app.post("/api/alerts", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
     await logAlert(auth, req.body, res);
+});
+
+/* ---- care gifts ----------------------------------------------------------*/
+app.get("/api/gifts", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    const [{ data: gifts, error: giftsError }, { data: scores, error: scoresError }] = await Promise.all([
+        auth.db.from("care_gifts").select("id, gift_type, title, file_name, mime_type, media_data, unlock_score, created_at")
+            .eq("user_id", auth.user.id).order("created_at", { ascending: false }),
+        auth.db.from("game_scores").select("score, difficulty").eq("user_id", auth.user.id)
+    ]);
+    if (giftsError || scoresError) return res.status(500).json({ error: (giftsError || scoresError).message });
+
+    const unlocked = (scores || []).some((row) => Number(row.score) >= 90 && (!row.difficulty || row.difficulty === "easy"));
+    res.json({ gifts: gifts || [], unlocked, unlockScore: 90 });
+});
+
+app.post("/api/gifts", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    const { type, title, fileName, mimeType, mediaData } = req.body || {};
+    const validType = type === "audio" || type === "photo";
+    const validMime = type === "audio" ? /^audio\/(webm|ogg|mpeg|mp4|wav)$/i.test(String(mimeType || ""))
+        : /^image\/(jpeg|png|webp|gif)$/i.test(String(mimeType || ""));
+    if (!validType || !validMime || !String(mediaData || "").startsWith("data:")) {
+        return res.status(400).json({ error: "Choose a valid audio recording or image." });
+    }
+    if (String(mediaData).length > 12 * 1024 * 1024) {
+        return res.status(413).json({ error: "That gift is too large. Please choose a smaller file." });
+    }
+
+    const { data, error } = await auth.db.from("care_gifts").insert({
+        user_id: auth.user.id,
+        gift_type: type,
+        title: String(title || (type === "audio" ? "A message from your caretaker" : "A photo from your caretaker")).trim().slice(0, 120),
+        file_name: String(fileName || "gift").slice(0, 160),
+        mime_type: mimeType,
+        media_data: mediaData,
+        unlock_score: 90
+    }).select("id, gift_type, title, file_name, mime_type, media_data, unlock_score, created_at").single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json({ gift: data });
 });
 
 /* ============================================================

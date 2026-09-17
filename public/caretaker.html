@@ -86,6 +86,12 @@
       <button class="drawer-link" type="button" data-view-target="alerts">
         <span class="drawer-icon">◌</span><span>Caregiver Alerts</span>
       </button>
+      <button class="drawer-link" type="button" data-view-target="gifts">
+        <span class="drawer-icon">♡</span><span>Upload Gifts</span>
+      </button>
+      <button class="drawer-link" type="button" data-view-target="appointments">
+        <span class="drawer-icon">□</span><span>Appointments</span>
+      </button>
     </nav>
   </aside>
   <button class="drawer-overlay" id="drawerOverlay" type="button" aria-label="Close dashboard menu"></button>
@@ -236,6 +242,52 @@
       <h3>Caregiver alert log</h3>
       <p class="sub">Reminders the caretaker has acknowledged</p>
       <div id="alertLog"></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- gift uploads -->
+  <section class="grid1 dashboard-view" data-view="gifts">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Upload gifts for the patient</h3>
+          <p class="sub">These gifts stay locked until the patient reaches 90% or higher on an easy game.</p>
+        </div>
+      </div>
+      <div class="gift-upload-grid">
+        <div class="gift-upload-card">
+          <div class="gift-upload-icon">◉</div>
+          <h4>Upload audio</h4>
+          <p>Record a personal voice message or choose an audio file.</p>
+          <div class="gift-actions">
+            <button class="btn" id="recordGiftBtn" type="button">Record voice</button>
+            <label class="btn ghost" for="audioGiftInput">Choose audio</label>
+            <input id="audioGiftInput" class="file-input" type="file" accept="audio/*">
+          </div>
+          <div class="recording-status" id="recordingStatus" aria-live="polite">Ready to record.</div>
+        </div>
+        <div class="gift-upload-card">
+          <div class="gift-upload-icon">▧</div>
+          <h4>Upload photo</h4>
+          <p>Choose a photo that will become a special patient gift.</p>
+          <label class="btn" for="photoGiftInput">Choose photo</label>
+          <input id="photoGiftInput" class="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+          <div class="recording-status" id="photoStatus" aria-live="polite">No photo selected.</div>
+        </div>
+      </div>
+      <p class="gift-feedback" id="giftFeedback" role="status"></p>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- appointments -->
+  <section class="grid1 dashboard-view" data-view="appointments">
+    <div class="panel appointment-panel">
+      <h3>Take appointment</h3>
+      <p class="sub">Search for a future appointment.</p>
+      <label class="appointment-search">
+        <span>⌕</span>
+        <input id="appointmentSearch" type="search" placeholder="Search appointments" aria-label="Search appointments">
+      </label>
     </div>
   </section>
 
