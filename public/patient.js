@@ -53,12 +53,32 @@
 
   var modalBg = document.getElementById("modalBg");
   var modalContent = document.getElementById("modalContent");
+  var modal = modalBg.querySelector(".modal");
 
   function closeModal() {
     modalBg.classList.remove("show");
+    gameScreenOpen = false;
+    modal.style.maxWidth = "";
+    modal.style.width = "";
+    modal.style.height = "";
+    modal.style.maxHeight = "";
+    modal.style.borderRadius = "";
+    modal.style.padding = "";
+    modal.style.overflowY = "";
+    modalBg.style.padding = "";
     if (canSpeak) window.speechSynthesis.cancel();
   }
   function openModal(html) {
+    if (gameScreenOpen) {
+      modal.style.maxWidth = "1100px";
+      modal.style.width = "100%";
+      modal.style.height = "100%";
+      modal.style.maxHeight = "100vh";
+      modal.style.borderRadius = "0";
+      modal.style.padding = "32px clamp(16px, 5vw, 56px)";
+      modal.style.overflowY = "auto";
+      modalBg.style.padding = "0";
+    }
     modalContent.innerHTML = html;
     modalBg.classList.add("show");
   }
@@ -255,20 +275,28 @@
   var selectedDifficulty = "easy";
   var difficultyInitialised = false;
   var completedGames = { easy: {}, medium: {}, hard: {} };
+  var unlockedDifficulty = "easy";
+  var cycleStartedAt = 0;
+  var gameScreenOpen = false;
 
   var GAME_CATALOG = {
     easy: [
       { key: "word", icon: "🌱", name: "Word Garden", category: "Language" },
       { key: "memory", icon: "🧠", name: "Memory Match", category: "Memory" },
       { key: "picture", icon: "🔍", name: "Picture Path", category: "Focus" },
-      { key: "category", icon: "🧺", name: "Sort & Match", category: "Reasoning" }
+      { key: "category", icon: "🧺", name: "Sort & Match", category: "Reasoning" },
+      { key: "color", icon: "🎨", name: "Color Clash", category: "Executive Function" },
+      { key: "odd", icon: "🟡", name: "Odd One Out", category: "Reasoning" },
+      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" }
     ],
     medium: [
       { key: "word", icon: "🌿", name: "Word Garden", category: "Language" },
       { key: "memory", icon: "🧩", name: "Memory Match", category: "Memory" },
       { key: "picture", icon: "🧭", name: "Picture Path", category: "Focus" },
       { key: "color", icon: "🎨", name: "Color Clash", category: "Executive Function" },
-      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" }
+      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" },
+      { key: "candy", icon: "🍬", name: "Candy Match", category: "Spatial Recognition" },
+      { key: "scramble", icon: "🔤", name: "Letter/Word Scramble", category: "Language" }
     ],
     hard: [
       { key: "word", icon: "🌳", name: "Word Garden", category: "Language" },
@@ -276,7 +304,8 @@
       { key: "picture", icon: "🗺️", name: "Picture Path", category: "Focus" },
       { key: "color", icon: "🎨", name: "Color Clash", category: "Executive Function" },
       { key: "odd", icon: "🟡", name: "Odd One Out", category: "Reasoning" },
-      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" }
+      { key: "sequence", icon: "🔢", name: "Pattern Recall", category: "Working Memory" },
+      { key: "chess", icon: "♟️", name: "Chess", category: "Planning" }
     ]
   };
 
@@ -292,16 +321,46 @@
   }
 
   function loadGameProgress() {
+    var now = Date.now();
     try {
       var saved = JSON.parse(window.localStorage.getItem(progressStorageKey()) || "null");
-      if (saved && saved.easy && saved.medium && saved.hard) completedGames = saved;
+      if (saved && saved.completed && saved.cycleStartedAt) {
+        cycleStartedAt = Number(saved.cycleStartedAt);
+        if (now - cycleStartedAt < 24 * 60 * 60 * 1000) {
+          completedGames = saved.completed;
+          unlockedDifficulty = difficultyOrder.indexOf(saved.unlockedDifficulty) > -1 ? saved.unlockedDifficulty : "easy";
+          selectedDifficulty = unlockedDifficulty;
+          return;
+        }
+      } else if (saved && saved.easy && saved.medium && saved.hard) {
+        completedGames = saved;
+      }
     } catch (error) {
-      completedGames = { easy: {}, medium: {}, hard: {} };
+      // Start a clean daily cycle when old or invalid browser data is found.
     }
+    resetDailyProgress();
   }
 
   function saveGameProgress() {
-    window.localStorage.setItem(progressStorageKey(), JSON.stringify(completedGames));
+    window.localStorage.setItem(progressStorageKey(), JSON.stringify({
+      completed: completedGames,
+      unlockedDifficulty: unlockedDifficulty,
+      cycleStartedAt: cycleStartedAt || Date.now()
+    }));
+  }
+
+  function resetDailyProgress() {
+    completedGames = { easy: {}, medium: {}, hard: {} };
+    unlockedDifficulty = "easy";
+    selectedDifficulty = "easy";
+    cycleStartedAt = Date.now();
+    saveGameProgress();
+  }
+
+  function refreshDailyCycle() {
+    if (cycleStartedAt && Date.now() - cycleStartedAt >= 24 * 60 * 60 * 1000) {
+      resetDailyProgress();
+    }
   }
 
   function stageComplete(stage) {
@@ -315,6 +374,8 @@
     var currentIndex = difficultyOrder.indexOf(selectedDifficulty);
     if (currentIndex < difficultyOrder.length - 1) {
       selectedDifficulty = difficultyOrder[currentIndex + 1];
+      unlockedDifficulty = selectedDifficulty;
+      saveGameProgress();
       openModal(
         "<h3>Stage complete!</h3>"
         + '<p class="sub sans">All ' + difficultyLabels[difficultyOrder[currentIndex]] + " exercises are complete.</p>"
@@ -322,7 +383,30 @@
       );
       speak("Stage complete. Continue to " + difficultyLabels[selectedDifficulty] + ".");
       document.getElementById("nextStageBtn").addEventListener("click", showGameChooser);
+    } else {
+      openModal(
+        "<h3>Today’s games complete!</h3>"
+        + '<p class="sub sans">You completed Easy, Medium, and Hard. New games will open after the 24-hour daily reset.</p>'
+      );
+      speak("Today's games are complete. New games will open after the daily reset.");
     }
+  }
+
+  function showRetry(name, score) {
+    openModal(
+      "<h3>Try again</h3>"
+      + '<p class="sub sans">' + localisedGameName(name) + " scored " + score + "%. You need 90% or higher to complete this exercise.</p>"
+      + '<button class="btn full" id="retryGameBtn" type="button">Play again</button>'
+    );
+    speak("Please try again. You need 90 percent or higher to complete this exercise.");
+    document.getElementById("retryGameBtn").addEventListener("click", function () {
+      launchGame(gameKeyForName(name));
+    });
+  }
+
+  function gameKeyForName(name) {
+    var game = GAME_CATALOG[selectedDifficulty].filter(function (item) { return item.name === name; })[0];
+    return game ? game.key : "word";
   }
 
   async function startWordGarden() {
@@ -675,7 +759,205 @@
     }, selectedDifficulty === "hard" ? 2300 : 1700);
   }
 
+  function startCandyMatch() {
+    var width = 8;
+    var candyTypes = ["🍬", "🍫", "🍭", "🍩", "🍪"];
+    var board = [];
+    var score = 0;
+    var moves = 30;
+    var selected = null;
+    var finished = false;
+    sessionStartedAt = Date.now();
+
+    openModal(
+      "<h3>🍬 Candy Match</h3>"
+      + '<p class="sub sans">Moves left: <b id="candyMoves">' + moves + '</b> | Score: <b id="candyScore">' + score + '</b></p>'
+      + '<div id="candyGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:0 auto;width:min(92vw,680px);background:var(--teal-100);padding:10px;border-radius:18px;"></div>'
+    );
+    speak("Candy Match. Tap two adjacent candies to make a row of three.");
+
+    function finishCandy() {
+      if (finished) return;
+      finished = true;
+      setTimeout(function () { finishGame("Candy Match", Math.min(100, score)); }, 500);
+    }
+
+    function checkMatches() {
+      var matchFound = false;
+      for (var index = 0; index < width * width; index += 1) {
+        if (index % width < width - 2 && board[index].textContent === board[index + 1].textContent
+          && board[index + 1].textContent === board[index + 2].textContent) {
+          board[index].dataset.match = "true";
+          board[index + 1].dataset.match = "true";
+          board[index + 2].dataset.match = "true";
+          matchFound = true;
+        }
+        if (index < width * (width - 2) && board[index].textContent === board[index + width].textContent
+          && board[index + width].textContent === board[index + width * 2].textContent) {
+          board[index].dataset.match = "true";
+          board[index + width].dataset.match = "true";
+          board[index + width * 2].dataset.match = "true";
+          matchFound = true;
+        }
+      }
+      if (!matchFound) return false;
+      score += 10;
+      document.getElementById("candyScore").textContent = score;
+      board.forEach(function (candy) {
+        if (candy.dataset.match === "true") {
+          candy.textContent = "💥";
+          candy.dataset.match = "false";
+        }
+      });
+      setTimeout(function () {
+        board.forEach(function (candy) {
+          if (candy.textContent === "💥") candy.textContent = candyTypes[Math.floor(Math.random() * candyTypes.length)];
+        });
+      }, 350);
+      return true;
+    }
+
+    var grid = document.getElementById("candyGrid");
+    for (var index = 0; index < width * width; index += 1) {
+      var candy = document.createElement("button");
+      candy.type = "button";
+      candy.style.cssText = "background:#fff;border:0;border-radius:10px;font-size:clamp(20px,4vw,38px);aspect-ratio:1;cursor:pointer;user-select:none;";
+      candy.textContent = candyTypes[Math.floor(Math.random() * candyTypes.length)];
+      candy.dataset.id = index;
+      candy.addEventListener("click", function () {
+        if (finished) return;
+        var current = this;
+        if (!selected) {
+          selected = current;
+          current.style.transform = "scale(1.12)";
+          current.style.boxShadow = "0 0 0 2px var(--teal-500)";
+          return;
+        }
+        var firstId = parseInt(selected.dataset.id, 10);
+        var currentId = parseInt(current.dataset.id, 10);
+        var adjacent = [1, -1, width, -width].indexOf(currentId - firstId) > -1
+          && !(firstId % width === width - 1 && currentId % width === 0)
+          && !(firstId % width === 0 && currentId % width === width - 1);
+        if (adjacent) {
+          var temporary = selected.textContent;
+          selected.textContent = current.textContent;
+          current.textContent = temporary;
+          if (checkMatches()) {
+            moves -= 1;
+            document.getElementById("candyMoves").textContent = moves;
+            if (moves <= 0) finishCandy();
+          } else {
+            current.textContent = selected.textContent;
+            selected.textContent = temporary;
+            speak("Try another move.");
+          }
+        }
+        selected.style.transform = "scale(1)";
+        selected.style.boxShadow = "none";
+        selected = null;
+      });
+      grid.appendChild(candy);
+      board.push(candy);
+    }
+  }
+
+  function startLetterScramble() {
+    var rounds = 4;
+    var round = 0;
+    var correct = 0;
+    var words = ["APPLE", "HOUSE", "GARDEN", "FAMILY"];
+    sessionStartedAt = Date.now();
+
+    function renderRound() {
+      var answer = words[round];
+      var letters = answer.split("").sort(function () { return Math.random() - 0.5; });
+      var typed = [];
+      openModal(
+        "<h3>🔤 Letter Scramble</h3>"
+        + '<p class="sub sans">Arrange the letters to make a familiar word.</p>'
+        + '<p class="prompt" id="scrambleAnswer" style="min-height:36px;letter-spacing:4px;"></p>'
+        + '<p class="sub sans" id="scrambleFeedback" style="min-height:20px;margin-bottom:10px;"></p>'
+        + '<div class="word-grid" id="scrambleGrid" style="grid-template-columns:repeat(4,1fr);"></div>'
+      );
+      speak("Letter Scramble. Arrange the letters to make a familiar word.");
+      letters.forEach(function (letter, index) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.textContent = letter;
+        card.addEventListener("click", function () {
+          if (card.disabled || typed.length >= answer.length) return;
+          typed.push(letter);
+          card.disabled = true;
+          document.getElementById("scrambleAnswer").textContent = typed.join(" ");
+          if (typed.length < answer.length) return;
+          var isCorrect = typed.join("") === answer;
+          if (isCorrect) {
+            correct += 1;
+            document.getElementById("scrambleFeedback").textContent = "Correct!";
+            document.getElementById("scrambleFeedback").style.color = "var(--green-700)";
+            speak("Correct!");
+          } else {
+            document.getElementById("scrambleFeedback").textContent = "Not quite. The word was " + answer + ".";
+            document.getElementById("scrambleFeedback").style.color = "var(--red-600)";
+            speak("Not quite. The word was " + answer + ".");
+          }
+          Array.prototype.forEach.call(document.getElementById("scrambleGrid").querySelectorAll("button"), function (button) {
+            button.disabled = true;
+          });
+          setTimeout(function () {
+            round += 1;
+            if (round < rounds) renderRound();
+            else finishGame("Letter/Word Scramble", Math.round((correct / rounds) * 100));
+          }, 900);
+        });
+        document.getElementById("scrambleGrid").appendChild(card);
+      });
+    }
+    renderRound();
+  }
+
+  function startChess() {
+    var rounds = 4;
+    var round = 0;
+    var correct = 0;
+    var positions = [
+      { prompt: "Which piece can move in an L shape?", options: ["♞ Knight", "♜ Rook", "♝ Bishop"], answer: "♞ Knight" },
+      { prompt: "Which piece moves diagonally?", options: ["♝ Bishop", "♜ Rook", "♟ Pawn"], answer: "♝ Bishop" },
+      { prompt: "Which piece is most important to protect?", options: ["♚ King", "♜ Rook", "♟ Pawn"], answer: "♚ King" },
+      { prompt: "Which piece moves in straight lines?", options: ["♜ Rook", "♞ Knight", "♝ Bishop"], answer: "♜ Rook" }
+    ];
+    sessionStartedAt = Date.now();
+
+    function renderRound() {
+      var position = positions[round];
+      openModal(
+        "<h3>♟️ Chess</h3>"
+        + '<p class="sub sans">' + position.prompt + "</p>"
+        + '<div class="word-grid" id="chessGrid" style="grid-template-columns:1fr;"></div>'
+      );
+      speak("Chess. " + position.prompt);
+      position.options.forEach(function (option) {
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "word-card";
+        card.textContent = option;
+        card.addEventListener("click", function () {
+          if (option === position.answer) correct += 1;
+          setTimeout(function () {
+            round += 1;
+            if (round < rounds) renderRound();
+            else finishGame("Chess", Math.round((correct / rounds) * 100));
+          }, 450);
+        });
+        document.getElementById("chessGrid").appendChild(card);
+      });
+    }
+    renderRound();
+  }
+
   function launchGame(key) {
+    gameScreenOpen = true;
     if (key === "word") startWordGarden();
     else if (key === "memory") startMemoryMatch();
     else if (key === "picture") startPicturePath();
@@ -683,12 +965,19 @@
     else if (key === "category") startCategorySort();
     else if (key === "odd") startOddOneOut();
     else if (key === "sequence") startSequenceRecall();
+    else if (key === "candy") startCandyMatch();
+    else if (key === "scramble") startLetterScramble();
+    else if (key === "chess") startChess();
     else startPicturePath();
   }
   window.launchGame = launchGame;
 
   function finishGame(name, score) {
     var duration = Math.max(30, Math.round((Date.now() - sessionStartedAt) / 1000));
+    if (score < 90) {
+      showRetry(name, score);
+      return;
+    }
     var message = score >= 90 ? t("excellent") : score >= 70 ? t("steady") : t("keepGoing");
 
     openModal(
@@ -725,35 +1014,26 @@
   }
 
   function showGameChooser() {
+    refreshDailyCycle();
     var name = state.profile ? state.profile.patientName : "";
     var games = GAME_CATALOG[selectedDifficulty];
     var completed = games.filter(function (game) { return completedGames[selectedDifficulty][game.key]; }).length;
     openModal(
       "<h3>" + t("chooseSession") + "</h3>"
       + '<p class="sub sans">' + t("chooseSessionSub", { name: MB.escapeHtml(name) }) + "</p>"
-      + '<div style="display:flex;gap:8px;justify-content:center;margin:16px 0 12px;">'
-      + difficultyOrder.map(function (stage) {
-        var active = stage === selectedDifficulty ? "background:#155249;color:#fff;" : "background:#eef3ef;color:#155249;";
-        return '<button type="button" data-stage="' + stage + '" style="' + active + 'border:0;border-radius:999px;padding:8px 14px;font-weight:700;cursor:pointer;">'
-          + difficultyIcons[stage] + " " + difficultyLabels[stage] + "</button>";
-      }).join("")
-      + "</div>"
-      + '<p class="sub sans" style="text-align:center;margin-bottom:12px;">' + completed + " of " + games.length + " completed</p>"
+      + '<div style="display:flex;justify-content:center;margin:16px 0 12px;"><span style="background:#155249;color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;">'
+      + difficultyIcons[selectedDifficulty] + " " + difficultyLabels[selectedDifficulty] + " stage</span></div>"
+      + '<p class="sub sans" style="text-align:center;margin-bottom:12px;">' + completed + " of " + games.length + " completed · Each game needs 90% or higher</p>"
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">'
       + games.map(function (game) {
         var isComplete = completedGames[selectedDifficulty][game.key];
         var label = game.name + " - " + game.category;
-        return '<button class="word-card" type="button" data-game-key="' + game.key + '" title="' + MB.escapeHtml(label) + '" aria-label="' + MB.escapeHtml(label) + '" style="height:82px;font-size:34px;position:relative;' + (isComplete ? "opacity:.48;" : "") + '">'
-          + game.icon + (isComplete ? '<span style="position:absolute;right:7px;bottom:5px;font-size:14px;">✓</span>' : "") + "</button>";
+        return '<button class="word-card" type="button" data-game-key="' + game.key + '" title="' + MB.escapeHtml(label) + '" aria-label="' + MB.escapeHtml(label) + '" style="height:112px;font-size:34px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;' + (isComplete ? "opacity:.48;" : "") + '">'
+          + '<span>' + game.icon + "</span><span style=\"font:600 12px var(--sans);line-height:1.1;\">" + MB.escapeHtml(game.name) + "</span>"
+          + (isComplete ? '<span style="position:absolute;right:7px;bottom:5px;font-size:14px;">✓</span>' : "") + "</button>";
       }).join("")
       + "</div>"
     );
-    Array.prototype.forEach.call(modalContent.querySelectorAll("[data-stage]"), function (button) {
-      button.addEventListener("click", function () {
-        selectedDifficulty = button.dataset.stage;
-        showGameChooser();
-      });
-    });
     Array.prototype.forEach.call(modalContent.querySelectorAll("[data-game-key]"), function (button) {
       button.addEventListener("click", function () { launchGame(button.dataset.gameKey); });
     });
