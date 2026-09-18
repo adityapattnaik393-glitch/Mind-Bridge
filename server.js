@@ -43,12 +43,43 @@ const TIME_ZONE = process.env.APP_TIME_ZONE || "Asia/Kolkata";
 const caregiverEmail = process.env.CAREGIVER_EMAIL || process.env.EMAIL_USER;
 
 const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    family: 4
 });
+
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("Gmail email notifications disabled: EMAIL_USER and EMAIL_PASS must be set in the deployment environment.");
+}
+
+async function sendCaregiverEmail({ to, subject, text }) {
+    const recipient = normaliseEmail(to);
+    if (!recipient) throw new Error("The patient has no valid caretaker email address.");
+
+    if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) {
+        return sendEmail({
+            to: recipient,
+            subject,
+            html: `<p>${String(text).replace(/\n/g, "<br>")}</p>`
+        });
+    }
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error("No email provider is configured. Set RESEND_API_KEY/EMAIL_FROM or EMAIL_USER/EMAIL_PASS.");
+    }
+
+    return transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: recipient,
+        subject,
+        text
+    });
+}
 
 /* Base client — used for auth calls only (signUp / signIn / refresh). */
 const supabase = supabaseUrl && supabaseKey
@@ -337,6 +368,12 @@ app.post("/api/auth/signup", async (req, res) => {
 
     if (error) {
         const alreadyExists = /already registered|already exists|User already/i.test(error.message);
+        const emailRateLimited = /rate limit|email rate limit|too many requests/i.test(error.message);
+        if (emailRateLimited) {
+            return res.status(429).json({
+                error: "Too many confirmation emails were requested. Wait about an hour before trying again, or configure custom SMTP in Supabase Auth."
+            });
+        }
         return res.status(alreadyExists ? 409 : 400).json({
             error: alreadyExists
                 ? "This email already has an account. Please sign in instead."
@@ -937,18 +974,26 @@ async function logAlert(auth, body, res) {
     if (String(status).toLowerCase() === "acknowledged") {
         if (patient?.caretaker_email) {
             try {
-                const emailResult = await transporter.sendMail({
-                    from: process.env.EMAIL_USER,
+                const emailResult = await sendCaregiverEmail({
                     to: patient.caretaker_email,
                     subject: `Task Completed: ${alertTitle}`,
                     text: `${patient.name || "The patient"} completed "${alertTitle}".\n\nDetails: ${alertBody || "No additional details."}\nTime: ${new Date().toLocaleString("en-IN", { timeZone: TIME_ZONE })}`
                 });
-                console.log("Completion email sent:", emailResult.messageId, "to", patient.caretaker_email);
+                console.log("Completion email sent:", emailResult?.messageId || emailResult?.id || "accepted", "to", patient.caretaker_email);
             } catch (emailError) {
-                console.error("Completion email failed:", emailError.message);
+                console.error("Completion email failed:", emailError.message, "recipient:", patient.caretaker_email);
+                return res.status(502).json({
+                    error: "The reminder was logged, but the caretaker email could not be sent.",
+                    emailError: emailError.message,
+                    alert: data
+                });
             }
         } else {
             console.warn("Completion email skipped: patient caretaker_email is missing.");
+            return res.status(422).json({
+                error: "The reminder was logged, but this patient has no caretaker email address.",
+                alert: data
+            });
         }
     }
 
