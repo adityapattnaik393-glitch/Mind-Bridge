@@ -1,220 +1,826 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Patient Dashboard | MindBridge</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="theme.css">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>MindBridge | Patient</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <div class="wrap">
 
-  <!-- ------------------------------------------------------------ header -->
+  <!-- =========================================================
+       HEADER
+  ========================================================== -->
+
   <header class="topbar">
+
     <div class="brand">
+
       <div class="mark">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/>
-          <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>
-          <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/>
-        </svg>
+        🌸
       </div>
+
       <div>
         <h1>MindBridge</h1>
         <p id="tagline">Cognitive Care Companion</p>
       </div>
+
     </div>
 
     <div class="top-actions">
+
       <nav class="switcher">
-        <a href="patient.html" class="active" id="navPatient">Patient</a>
-        <a href="caretaker.html" id="navCaretaker">Caretaker</a>
+        <a href="patient.html"
+           class="active"
+           id="navPatient">
+          Patient
+        </a>
+
+        <a href="caretaker.html"
+           id="navCaretaker">
+          Caretaker
+        </a>
       </nav>
-      <div class="pill" id="syncPill"><span class="dot"></span> <span id="syncLabel">Synced</span></div>
-      <button class="logout-btn" id="logoutBtn" type="button">Sign out</button>
-      <button class="icon-btn" id="soundBtn" type="button" title="Toggle voice narration" aria-label="Toggle voice narration">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1D2521" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+
+      <div class="pill" id="syncPill">
+        <span class="dot"></span>
+        <span id="syncLabel">Synced</span>
+      </div>
+
+      <button
+        class="logout-btn"
+        id="logoutBtn"
+        type="button">
+        Sign out
       </button>
+
+      <button
+        class="icon-btn"
+        id="soundBtn"
+        type="button"
+        title="Toggle voice narration"
+        aria-label="Toggle voice narration">
+
+        🔊
+
+      </button>
+
     </div>
+
   </header>
 
-  <!-- -------------------------------------------------------------- hero -->
+
+  <!-- =========================================================
+       WELCOME / GREETING
+  ========================================================== -->
+
   <section class="hero">
+
     <div class="hero-top">
+
       <div class="hero-greet">
-        <p class="eyebrow sans" id="greetTime">Good evening</p>
-        <h2 id="patientName">—</h2>
+
+        <p class="eyebrow sans" id="greetTime">
+          Good afternoon
+        </p>
+
+        <h2>
+          <span id="patientName">Gayatri</span>! 🌷
+        </h2>
+
+        <p class="welcome-message">
+          Let's make today brighter.
+        </p>
+
         <div class="meta-row">
+
           <span id="patientAge"></span>
+
           <span id="patientRegion"></span>
+
           <span id="patientLanguage"></span>
+
         </div>
+
       </div>
+
+
+      <!-- Keep streak ID because patient.js uses it -->
+
       <div class="streak">
-        <div class="num" id="streakNum">0</div>
-        <div class="lbl" id="streakLabel">day streak</div>
+
+        <div class="num" id="streakNum">
+          0
+        </div>
+
+        <div class="lbl" id="streakLabel">
+          day streak
+        </div>
+
       </div>
+
     </div>
+
   </section>
 
-  <!-- ------------------------------------------------------------- stats -->
-  <section class="stats">
-    <div class="stat-card" id="avgCard">
-      <div class="ic teal">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v1A3 3 0 0 0 3 10.5v3A3 3 0 0 0 6 16.5v1A3.5 3.5 0 0 0 9.5 21"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5v1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3v1a3.5 3.5 0 0 1-3.5 3.5"/></svg>
+
+  <!-- =========================================================
+       TODAY'S LITTLE WINS
+  ========================================================== -->
+
+  <section class="little-wins panel">
+
+    <div class="section-title">
+
+      <div>
+        <h3>☀️ Today's Little Wins</h3>
+
+        <p class="sub">
+          Every little step counts.
+        </p>
       </div>
+
+    </div>
+
+
+    <div class="wins-grid">
+
+      <button
+        class="win-card"
+        id="winGame"
+        type="button">
+
+        <span class="win-icon">🧩</span>
+
+        <span class="win-name">
+          Game
+        </span>
+
+        <small>
+          Exercise your mind
+        </small>
+
+      </button>
+
+
+      <button
+        class="win-card"
+        id="winWater"
+        type="button">
+
+        <span class="win-icon">💧</span>
+
+        <span class="win-name">
+          Water
+        </span>
+
+        <small>
+          Stay hydrated
+        </small>
+
+      </button>
+
+
+      <button
+        class="win-card"
+        id="winWalk"
+        type="button">
+
+        <span class="win-icon">🚶</span>
+
+        <span class="win-name">
+          Walk
+        </span>
+
+        <small>
+          Keep moving
+        </small>
+
+      </button>
+
+
+      <button
+        class="win-card"
+        id="winMemory"
+        type="button">
+
+        <span class="win-icon">📸</span>
+
+        <span class="win-name">
+          Memory
+        </span>
+
+        <small>
+          Remember a moment
+        </small>
+
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       FEELING
+  ========================================================== -->
+
+  <section class="feeling-section panel">
+
+    <div class="section-title">
+
+      <div>
+
+        <h3>
+          😊 How are you feeling?
+        </h3>
+
+        <p class="sub">
+          Tap the face that feels right.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="feeling-options">
+
+      <button
+        type="button"
+        class="feeling-btn"
+        data-feeling="happy"
+        aria-label="Happy">
+        😄
+      </button>
+
+      <button
+        type="button"
+        class="feeling-btn"
+        data-feeling="good"
+        aria-label="Good">
+        🙂
+      </button>
+
+      <button
+        type="button"
+        class="feeling-btn"
+        data-feeling="okay"
+        aria-label="Okay">
+        😐
+      </button>
+
+      <button
+        type="button"
+        class="feeling-btn"
+        data-feeling="sad"
+        aria-label="Sad">
+        😔
+      </button>
+
+      <button
+        type="button"
+        class="feeling-btn"
+        data-feeling="worried"
+        aria-label="Worried">
+        😟
+      </button>
+
+    </div>
+
+    <p
+      id="feelingResponse"
+      class="feeling-response">
+    </p>
+
+  </section>
+
+
+  <!-- =========================================================
+       TODAY'S PLAN
+  ========================================================== -->
+
+  <section class="today-plan panel">
+
+    <div class="section-title">
+
+      <div>
+
+        <h3>
+          📅 Today's Plan
+        </h3>
+
+        <p class="sub">
+          Things to remember today.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="plan-list">
+
+      <div class="plan-item">
+
+        <div class="plan-icon medicine">
+          💊
+        </div>
+
+        <div class="plan-text">
+
+          <strong>
+            Medicine
+          </strong>
+
+          <small>
+            Don't forget your medicine
+          </small>
+
+        </div>
+
+        <span class="plan-check">
+          ○
+        </span>
+
+      </div>
+
+
+      <div class="plan-item">
+
+        <div class="plan-icon appointment">
+          👨‍⚕️
+        </div>
+
+        <div class="plan-text">
+
+          <strong>
+            Appointment
+          </strong>
+
+          <small>
+            Check today's appointments
+          </small>
+
+        </div>
+
+        <span class="plan-check">
+          ○
+        </span>
+
+      </div>
+
+
+      <div class="plan-item">
+
+        <div class="plan-icon hydration">
+          💧
+        </div>
+
+        <div class="plan-text">
+
+          <strong>
+            Hydration
+          </strong>
+
+          <small>
+            Have some water
+          </small>
+
+        </div>
+
+        <span class="plan-check">
+          ○
+        </span>
+
+      </div>
+
+
+      <div class="plan-item">
+
+        <div class="plan-icon exercise">
+          🚶
+        </div>
+
+        <div class="plan-text">
+
+          <strong>
+            Exercise
+          </strong>
+
+          <small>
+            Take a gentle walk
+          </small>
+
+        </div>
+
+        <span class="plan-check">
+          ○
+        </span>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       MEMORY & MOMENTS
+  ========================================================== -->
+
+  <section class="memories-section panel">
+
+    <div class="panel-head">
+
+      <div>
+
+        <h3>
+          🌸 Memories & Moments
+        </h3>
+
+        <p class="sub">
+          Special moments to remember.
+        </p>
+
+      </div>
+
+      <span class="section-heart">
+        ♡
+      </span>
+
+    </div>
+
+
+    <div class="memory-placeholder">
+
+      <div class="memory-photo">
+        📸
+      </div>
+
+      <div class="memory-content">
+
+        <h4>
+          A beautiful memory
+        </h4>
+
+        <p>
+          Your special memories can appear here.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       HIDDEN / EXISTING STATISTICS
+       
+       These remain in the page because patient.js expects
+       these IDs. They can be used later for caregiver analytics.
+  ========================================================== -->
+
+  <section class="hidden-data" aria-hidden="true">
+
+    <div class="stat-card" id="avgCard">
+
+      <div class="ic teal"></div>
+
       <div>
         <p class="num" id="avgScore">0%</p>
-        <p class="lbl" id="avgLabel">Average score</p>
+
+        <p class="lbl" id="avgLabel">
+          Average score
+        </p>
       </div>
+
     </div>
+
 
     <div class="stat-card" id="minsCard">
-      <div class="ic amber">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-      </div>
+
+      <div class="ic amber"></div>
+
       <div>
         <p class="num" id="minsActive">0</p>
-        <p class="lbl" id="minsLabel">Minutes active</p>
+
+        <p class="lbl" id="minsLabel">
+          Minutes active
+        </p>
       </div>
+
     </div>
+
 
     <div class="stat-card" id="bestCard">
-      <div class="ic green">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 6h6v6"/></svg>
-      </div>
+
+      <div class="ic green"></div>
+
       <div>
         <p class="num" id="bestScore">0%</p>
-        <p class="lbl" id="bestLabel">Best score</p>
+
+        <p class="lbl" id="bestLabel">
+          Best score
+        </p>
       </div>
+
     </div>
+
+
+    <!-- Wellbeing elements required by patient.js -->
+
+    <div id="wellbeingTitle">
+      Wellbeing Index
+    </div>
+
+    <div id="wellbeingSub">
+      AI-assessed cognitive mood
+    </div>
+
+    <div id="wellbeingNum">
+      0
+    </div>
+
+    <div id="wellbeingOutOf">
+      out of 100
+    </div>
+
+    <svg width="0" height="0">
+
+      <circle
+        id="donutRing"
+        stroke-dasharray="452"
+        stroke-dashoffset="452">
+      </circle>
+
+    </svg>
+
+    <div id="tagsWrap"></div>
+
   </section>
 
-  <!-- --------------------------------------------------------- wellbeing -->
-  <section class="grid1">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <h3 id="wellbeingTitle">Wellbeing Index</h3>
-          <p class="sub" id="wellbeingSub">AI-assessed cognitive mood</p>
-        </div>
-        <span>✨</span>
-      </div>
-      <div class="donut-wrap">
-        <div class="donut">
-          <svg width="170" height="170" viewBox="0 0 170 170">
-            <circle cx="85" cy="85" r="72" stroke="#EFECE2" stroke-width="14" fill="none"/>
-            <circle id="donutRing" class="donut-ring" cx="85" cy="85" r="72" stroke="url(#grad)" stroke-width="14"
-                    fill="none" stroke-dasharray="452" stroke-dashoffset="452" stroke-linecap="round"/>
-            <defs>
-              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#3E9B6E"/>
-                <stop offset="100%" stop-color="#DE9A34"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <div class="donut-center">
-            <span class="n" id="wellbeingNum">0</span>
-            <span class="o" id="wellbeingOutOf">out of 100</span>
-          </div>
-        </div>
-        <div class="tags" id="tagsWrap"></div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ------------------------------------------------- activity + alerts -->
-  <section class="grid2">
-    <div class="panel">
+  <!-- =========================================================
+       ACTIVITY + ALERTS
+       
+       Kept because patient.js loads these from Supabase.
+  ========================================================== -->
+
+  <section class="dashboard-secondary">
+
+    <div class="panel activity-panel">
+
       <div class="panel-head">
+
         <div>
-          <h3 id="activityTitle">Recent Activity</h3>
-          <p class="sub" id="activitySub">Latest cognitive sessions</p>
+
+          <h3 id="activityTitle">
+            Recent Activity
+          </h3>
+
+          <p
+            class="sub"
+            id="activitySub">
+            Latest cognitive sessions
+          </p>
+
         </div>
-        <button class="btn" id="startBtn" type="button">+ <span id="startLabel">Start</span></button>
+
+        <button
+          class="btn"
+          id="startBtn"
+          type="button">
+
+          🧩
+          <span id="startLabel">
+            Start
+          </span>
+
+        </button>
+
       </div>
+
       <div id="activityList"></div>
+
     </div>
 
-    <div class="panel">
-      <h3 id="alertsTitle">Caregiver Alerts</h3>
-      <p class="sub" id="alertsSub">Updates and reminders</p>
-      <div id="alertsList"></div>
-    </div>
-  </section>
 
-  <!-- ----------------------------------------------------------- care gifts -->
-  <section class="grid1">
-    <div class="panel">
+    <div class="panel alerts-panel">
+
       <div class="panel-head">
+
         <div>
-          <h3>Gifts from your caretaker</h3>
-          <p class="sub" id="giftsSub">Reach 90% or higher in an easy game to unlock a gift.</p>
+
+          <h3 id="alertsTitle">
+            Caregiver Alerts
+          </h3>
+
+          <p
+            class="sub"
+            id="alertsSub">
+            Updates and reminders
+          </p>
+
         </div>
-        <span>♡</span>
+
+        🔔
+
       </div>
-      <div class="gift-list" id="patientGifts"></div>
+
+      <div id="alertsList"></div>
+
     </div>
+
   </section>
 
+
+  <!-- =========================================================
+       LITTLE REWARD
+  ========================================================== -->
+
+  <section class="reward-section panel">
+
+    <div class="panel-head">
+
+      <div>
+
+        <h3>
+          🎁 Little Reward
+        </h3>
+
+        <p
+          class="sub"
+          id="giftsSub">
+          Reach 90% or higher in an easy game to unlock a gift.
+        </p>
+
+      </div>
+
+      <span>
+        ✨
+      </span>
+
+    </div>
+
+
+    <div
+      class="gift-list"
+      id="patientGifts">
+    </div>
+
+  </section>
+
+
 </div>
 
-<!-- --------------------------------------------------------- game modal -->
-<div class="modal-bg" id="modalBg">
+
+<!-- =========================================================
+     GAME MODAL
+========================================================== -->
+
+<div
+  class="modal-bg"
+  id="modalBg">
+
   <div class="modal">
-    <button class="close-x" id="closeModal" type="button" aria-label="Close">✕</button>
-    <div class="voice-indicator" id="voiceIndicator">
-      <span class="vbars"><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span><span class="vbar"></span></span>
+
+    <button
+      class="close-x"
+      id="closeModal"
+      type="button"
+      aria-label="Close">
+
+      ✕
+
+    </button>
+
+
+    <div
+      class="voice-indicator"
+      id="voiceIndicator">
+
+      <span class="vbars">
+
+        <span class="vbar"></span>
+        <span class="vbar"></span>
+        <span class="vbar"></span>
+        <span class="vbar"></span>
+
+      </span>
+
       Speaking…
+
     </div>
+
+
     <div id="modalContent"></div>
+
   </div>
+
 </div>
+
+
+<!-- =========================================================
+     EXISTING JAVASCRIPT
+========================================================== -->
 
 <script src="app.js"></script>
 <script src="i18n.js"></script>
 <script src="patient.js"></script>
 
-<!-- Dementia Helper Floating Chat -->
+
+<!-- =========================================================
+     MINDBUDDY
+========================================================== -->
+
 <div class="ai-helper-container">
 
   <!-- Chat Window -->
-  <div id="aiChatBox" class="ai-chat-box">
+
+  <div
+    id="aiChatBox"
+    class="ai-chat-box">
+
 
     <div class="ai-chat-header">
+
       <div class="ai-helper-title">
-        <div class="ai-helper-avatar">🧠</div>
-        <div>
-          <h3>MindBuddy</h3>
-          <span>Your personal helper</span>
+
+        <div class="ai-helper-avatar">
+          🧠
         </div>
+
+        <div>
+
+          <h3>
+            MindBuddy
+          </h3>
+
+          <span>
+            Your personal helper
+          </span>
+
+        </div>
+
       </div>
 
-      <button id="closeAiChat" class="ai-close-btn" aria-label="Close chat">
+
+      <button
+        id="closeAiChat"
+        class="ai-close-btn"
+        aria-label="Close chat">
+
         ×
+
       </button>
+
     </div>
+
 
     <!-- Messages -->
-    <div id="aiChatMessages" class="ai-chat-messages">
+
+    <div
+      id="aiChatMessages"
+      class="ai-chat-messages">
 
       <div class="ai-message ai-bot-message">
-        <div class="ai-message-icon">🧠</div>
-        <div class="ai-message-text">
-          Hello! I'm MindBuddy. 😊<br>
-          I'm here to talk, help you remember things, and keep you company.
+
+        <div class="ai-message-icon">
+          🧠
         </div>
+
+        <div class="ai-message-text">
+
+          Hello! I'm MindBuddy. 😊
+          <br>
+
+          I'm here to talk, help you remember things,
+          and keep you company.
+
+        </div>
+
       </div>
 
     </div>
 
+
     <!-- Input -->
+
     <div class="ai-chat-input-area">
+
       <input
         type="text"
         id="aiChatInput"
@@ -222,20 +828,152 @@
         autocomplete="off"
       >
 
-      <button id="aiSendBtn" class="ai-send-btn" aria-label="Send message">
+      <button
+        id="aiSendBtn"
+        class="ai-send-btn"
+        aria-label="Send message">
+
         ➤
+
       </button>
+
     </div>
 
   </div>
 
-  <!-- Floating Button -->
-  <button id="aiHelperButton" class="ai-helper-button" aria-label="Open MindBuddy">
+
+  <!-- Floating MindBuddy Button -->
+
+  <button
+    id="aiHelperButton"
+    class="ai-helper-button"
+    aria-label="Open MindBuddy">
+
     <div class="ai-helper-logo">
-      🧠
+      💬
     </div>
+
   </button>
 
 </div>
+
+
+<!-- =========================================================
+     SMALL FRONT-END INTERACTIONS
+========================================================== -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* ---------------------------------------------------------
+     Feeling buttons
+  --------------------------------------------------------- */
+
+  const feelingButtons =
+    document.querySelectorAll(".feeling-btn");
+
+  const feelingResponse =
+    document.getElementById("feelingResponse");
+
+
+  feelingButtons.forEach(function (button) {
+
+    button.addEventListener("click", function () {
+
+      feelingButtons.forEach(function (item) {
+        item.classList.remove("selected");
+      });
+
+      button.classList.add("selected");
+
+      const feeling = button.dataset.feeling;
+
+      const messages = {
+
+        happy:
+          "That's wonderful! Keep smiling. 🌸",
+
+        good:
+          "I'm glad you're feeling good today. 💚",
+
+        okay:
+          "That's okay. Take things one step at a time. 🌷",
+
+        sad:
+          "It's okay to have a quiet day. I'm here with you. 💛",
+
+        worried:
+          "Take a slow breath. You're not alone. 💙"
+
+      };
+
+      feelingResponse.textContent =
+        messages[feeling] || "";
+
+    });
+
+  });
+
+
+  /* ---------------------------------------------------------
+     Game shortcut
+  --------------------------------------------------------- */
+
+  const gameButton =
+    document.getElementById("winGame");
+
+  const startButton =
+    document.getElementById("startBtn");
+
+
+  if (gameButton && startButton) {
+
+    gameButton.addEventListener("click", function () {
+
+      startButton.click();
+
+    });
+
+  }
+
+
+  /* ---------------------------------------------------------
+     Simple plan interaction
+  --------------------------------------------------------- */
+
+  document
+    .querySelectorAll(".plan-item")
+    .forEach(function (item) {
+
+      item.addEventListener("click", function () {
+
+        const check =
+          item.querySelector(".plan-check");
+
+        if (!check) return;
+
+        if (check.textContent === "○") {
+
+          check.textContent = "✓";
+
+          item.classList.add("completed");
+
+        } else {
+
+          check.textContent = "○";
+
+          item.classList.remove("completed");
+
+        }
+
+      });
+
+    });
+
+});
+
+</script>
+
 </body>
 </html>
