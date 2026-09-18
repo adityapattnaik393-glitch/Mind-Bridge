@@ -1,979 +1,1262 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>MindBridge | Patient</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>MindBridge | Patient Dashboard</title>
 
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
 
+
 <body>
 
-<div class="wrap">
-
-  <!-- =========================================================
-       HEADER
-  ========================================================== -->
-
-  <header class="topbar">
-
-    <div class="brand">
-
-      <div class="mark">
-        🌸
-      </div>
-
-      <div>
-        <h1>MindBridge</h1>
-        <p id="tagline">Cognitive Care Companion</p>
-      </div>
-
-    </div>
-
-    <div class="top-actions">
-
-      <nav class="switcher">
-        <a href="patient.html"
-           class="active"
-           id="navPatient">
-          Patient
-        </a>
-
-        <a href="caretaker.html"
-           id="navCaretaker">
-          Caretaker
-        </a>
-      </nav>
-
-      <div class="pill" id="syncPill">
-        <span class="dot"></span>
-        <span id="syncLabel">Synced</span>
-      </div>
-
-      <button
-        class="logout-btn"
-        id="logoutBtn"
-        type="button">
-        Sign out
-      </button>
-
-      <button
-        class="icon-btn"
-        id="soundBtn"
-        type="button"
-        title="Toggle voice narration"
-        aria-label="Toggle voice narration">
-
-        🔊
-
-      </button>
-
-    </div>
-
-  </header>
+  <div class="wrap">
 
 
-  <!-- =========================================================
-       WELCOME / GREETING
-  ========================================================== -->
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
 
-  <section class="hero">
+    <header class="topbar">
 
-    <div class="hero-top">
+      <div class="brand">
 
-      <div class="hero-greet">
-
-        <p class="eyebrow sans" id="greetTime">
-          Good afternoon
-        </p>
-
-        <h2>
-          <span id="patientName">Gayatri</span>! 🌷
-        </h2>
-
-        <p class="welcome-message">
-          Let's make today brighter.
-        </p>
-
-        <div class="meta-row">
-
-          <span id="patientAge"></span>
-
-          <span id="patientRegion"></span>
-
-          <span id="patientLanguage"></span>
-
+        <div class="mark">
+          🧠
         </div>
-
-      </div>
-
-
-      <!-- Keep streak ID because patient.js uses it -->
-
-      <div class="streak">
-
-        <div class="num" id="streakNum">
-          0
-        </div>
-
-        <div class="lbl" id="streakLabel">
-          day streak
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =========================================================
-       TODAY'S LITTLE WINS
-  ========================================================== -->
-
-  <section class="little-wins panel">
-
-    <div class="section-title">
-
-      <div>
-        <h3>☀️ Today's Little Wins</h3>
-
-        <p class="sub">
-          Every little step counts.
-        </p>
-      </div>
-
-    </div>
-
-
-    <div class="wins-grid">
-
-      <button
-        class="win-card"
-        id="winGame"
-        type="button">
-
-        <span class="win-icon">🧩</span>
-
-        <span class="win-name">
-          Game
-        </span>
-
-        <small>
-          Exercise your mind
-        </small>
-
-      </button>
-
-
-      <button
-        class="win-card"
-        id="winWater"
-        type="button">
-
-        <span class="win-icon">💧</span>
-
-        <span class="win-name">
-          Water
-        </span>
-
-        <small>
-          Stay hydrated
-        </small>
-
-      </button>
-
-
-      <button
-        class="win-card"
-        id="winWalk"
-        type="button">
-
-        <span class="win-icon">🚶</span>
-
-        <span class="win-name">
-          Walk
-        </span>
-
-        <small>
-          Keep moving
-        </small>
-
-      </button>
-
-
-      <button
-        class="win-card"
-        id="winMemory"
-        type="button">
-
-        <span class="win-icon">📸</span>
-
-        <span class="win-name">
-          Memory
-        </span>
-
-        <small>
-          Remember a moment
-        </small>
-
-      </button>
-
-    </div>
-
-  </section>
-
-
-  <!-- =========================================================
-       FEELING
-  ========================================================== -->
-
-  <section class="feeling-section panel">
-
-    <div class="section-title">
-
-      <div>
-
-        <h3>
-          😊 How are you feeling?
-        </h3>
-
-        <p class="sub">
-          Tap the face that feels right.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="feeling-options">
-
-      <button
-        type="button"
-        class="feeling-btn"
-        data-feeling="happy"
-        aria-label="Happy">
-        😄
-      </button>
-
-      <button
-        type="button"
-        class="feeling-btn"
-        data-feeling="good"
-        aria-label="Good">
-        🙂
-      </button>
-
-      <button
-        type="button"
-        class="feeling-btn"
-        data-feeling="okay"
-        aria-label="Okay">
-        😐
-      </button>
-
-      <button
-        type="button"
-        class="feeling-btn"
-        data-feeling="sad"
-        aria-label="Sad">
-        😔
-      </button>
-
-      <button
-        type="button"
-        class="feeling-btn"
-        data-feeling="worried"
-        aria-label="Worried">
-        😟
-      </button>
-
-    </div>
-
-    <p
-      id="feelingResponse"
-      class="feeling-response">
-    </p>
-
-  </section>
-
-
-  <!-- =========================================================
-       TODAY'S PLAN
-  ========================================================== -->
-
-  <section class="today-plan panel">
-
-    <div class="section-title">
-
-      <div>
-
-        <h3>
-          📅 Today's Plan
-        </h3>
-
-        <p class="sub">
-          Things to remember today.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="plan-list">
-
-      <div class="plan-item">
-
-        <div class="plan-icon medicine">
-          💊
-        </div>
-
-        <div class="plan-text">
-
-          <strong>
-            Medicine
-          </strong>
-
-          <small>
-            Don't forget your medicine
-          </small>
-
-        </div>
-
-        <span class="plan-check">
-          ○
-        </span>
-
-      </div>
-
-
-      <div class="plan-item">
-
-        <div class="plan-icon appointment">
-          👨‍⚕️
-        </div>
-
-        <div class="plan-text">
-
-          <strong>
-            Appointment
-          </strong>
-
-          <small>
-            Check today's appointments
-          </small>
-
-        </div>
-
-        <span class="plan-check">
-          ○
-        </span>
-
-      </div>
-
-
-      <div class="plan-item">
-
-        <div class="plan-icon hydration">
-          💧
-        </div>
-
-        <div class="plan-text">
-
-          <strong>
-            Hydration
-          </strong>
-
-          <small>
-            Have some water
-          </small>
-
-        </div>
-
-        <span class="plan-check">
-          ○
-        </span>
-
-      </div>
-
-
-      <div class="plan-item">
-
-        <div class="plan-icon exercise">
-          🚶
-        </div>
-
-        <div class="plan-text">
-
-          <strong>
-            Exercise
-          </strong>
-
-          <small>
-            Take a gentle walk
-          </small>
-
-        </div>
-
-        <span class="plan-check">
-          ○
-        </span>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =========================================================
-       MEMORY & MOMENTS
-  ========================================================== -->
-
-  <section class="memories-section panel">
-
-    <div class="panel-head">
-
-      <div>
-
-        <h3>
-          🌸 Memories & Moments
-        </h3>
-
-        <p class="sub">
-          Special moments to remember.
-        </p>
-
-      </div>
-
-      <span class="section-heart">
-        ♡
-      </span>
-
-    </div>
-
-
-    <div class="memory-placeholder">
-
-      <div class="memory-photo">
-        📸
-      </div>
-
-      <div class="memory-content">
-
-        <h4>
-          A beautiful memory
-        </h4>
-
-        <p>
-          Your special memories can appear here.
-        </p>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =========================================================
-       HIDDEN / EXISTING STATISTICS
-       
-       These remain in the page because patient.js expects
-       these IDs. They can be used later for caregiver analytics.
-  ========================================================== -->
-
-  <section class="hidden-data" aria-hidden="true">
-
-    <div class="stat-card" id="avgCard">
-
-      <div class="ic teal"></div>
-
-      <div>
-        <p class="num" id="avgScore">0%</p>
-
-        <p class="lbl" id="avgLabel">
-          Average score
-        </p>
-      </div>
-
-    </div>
-
-
-    <div class="stat-card" id="minsCard">
-
-      <div class="ic amber"></div>
-
-      <div>
-        <p class="num" id="minsActive">0</p>
-
-        <p class="lbl" id="minsLabel">
-          Minutes active
-        </p>
-      </div>
-
-    </div>
-
-
-    <div class="stat-card" id="bestCard">
-
-      <div class="ic green"></div>
-
-      <div>
-        <p class="num" id="bestScore">0%</p>
-
-        <p class="lbl" id="bestLabel">
-          Best score
-        </p>
-      </div>
-
-    </div>
-
-
-    <!-- Wellbeing elements required by patient.js -->
-
-    <div id="wellbeingTitle">
-      Wellbeing Index
-    </div>
-
-    <div id="wellbeingSub">
-      AI-assessed cognitive mood
-    </div>
-
-    <div id="wellbeingNum">
-      0
-    </div>
-
-    <div id="wellbeingOutOf">
-      out of 100
-    </div>
-
-    <svg width="0" height="0">
-
-      <circle
-        id="donutRing"
-        stroke-dasharray="452"
-        stroke-dashoffset="452">
-      </circle>
-
-    </svg>
-
-    <div id="tagsWrap"></div>
-
-  </section>
-
-
-  <!-- =========================================================
-       ACTIVITY + ALERTS
-       
-       Kept because patient.js loads these from Supabase.
-  ========================================================== -->
-
-  <section class="dashboard-secondary">
-
-    <div class="panel activity-panel">
-
-      <div class="panel-head">
 
         <div>
+          <h1>MindBridge</h1>
 
-          <h3 id="activityTitle">
-            Recent Activity
-          </h3>
-
-          <p
-            class="sub"
-            id="activitySub">
-            Latest cognitive sessions
+          <p id="tagline">
+            Cognitive Care Companion
           </p>
+        </div>
+
+      </div>
+
+
+      <div class="top-actions">
+
+        <nav class="switcher">
+
+          <a
+            href="patient.html"
+            class="active"
+            id="navPatient">
+            Patient
+          </a>
+
+          <a
+            href="caretaker.html"
+            id="navCaretaker">
+            Caretaker
+          </a>
+
+        </nav>
+
+
+        <div
+          class="pill"
+          id="syncPill">
+
+          🟡
+          <span id="syncLabel">
+            Synced
+          </span>
 
         </div>
 
+
         <button
-          class="btn"
-          id="startBtn"
+          class="logout-btn"
+          id="logoutBtn"
           type="button">
 
-          🧩
-          <span id="startLabel">
-            Start
-          </span>
+          Sign out
+
+        </button>
+
+
+        <button
+          class="icon-btn"
+          id="soundBtn"
+          type="button"
+          aria-label="Sound">
+
+          🔊
 
         </button>
 
       </div>
 
-      <div id="activityList"></div>
-
-    </div>
+    </header>
 
 
-    <div class="panel alerts-panel">
 
-      <div class="panel-head">
+    <!-- =====================================================
+         GREETING
+         ===================================================== -->
 
-        <div>
+    <section class="hero">
 
-          <h3 id="alertsTitle">
-            Caregiver Alerts
-          </h3>
+      <div class="hero-top">
+
+        <div class="hero-greet">
 
           <p
-            class="sub"
-            id="alertsSub">
-            Updates and reminders
+            class="eyebrow"
+            id="greetTime">
+
+            Good morning
+
           </p>
 
+
+          <h2>
+            Hello,
+            <span id="patientName">—</span>!
+          </h2>
+
+
+          <div class="meta-row">
+
+            <span id="patientAge"></span>
+
+            <span id="patientRegion"></span>
+
+            <span id="patientLanguage"></span>
+
+          </div>
+
         </div>
 
-        🔔
+
+        <div class="streak">
+
+          <div
+            class="num"
+            id="streakNum">
+
+            0
+
+          </div>
+
+          <div
+            class="lbl"
+            id="streakLabel">
+
+            day streak
+
+          </div>
+
+        </div>
 
       </div>
 
-      <div id="alertsList"></div>
-
-    </div>
-
-  </section>
+    </section>
 
 
-  <!-- =========================================================
-       LITTLE REWARD
-  ========================================================== -->
 
-  <section class="reward-section panel">
+    <!-- =====================================================
+         MOOD CHECK-IN
+         ===================================================== -->
 
-    <div class="panel-head">
+    <section class="dashboard-section">
 
-      <div>
-
-        <h3>
-          🎁 Little Reward
-        </h3>
-
-        <p
-          class="sub"
-          id="giftsSub">
-          Reach 90% or higher in an easy game to unlock a gift.
-        </p>
-
-      </div>
-
-      <span>
-        ✨
-      </span>
-
-    </div>
-
-
-    <div
-      class="gift-list"
-      id="patientGifts">
-    </div>
-
-  </section>
-
-
-</div>
-
-
-<!-- =========================================================
-     GAME MODAL
-========================================================== -->
-
-<div
-  class="modal-bg"
-  id="modalBg">
-
-  <div class="modal">
-
-    <button
-      class="close-x"
-      id="closeModal"
-      type="button"
-      aria-label="Close">
-
-      ✕
-
-    </button>
-
-
-    <div
-      class="voice-indicator"
-      id="voiceIndicator">
-
-      <span class="vbars">
-
-        <span class="vbar"></span>
-        <span class="vbar"></span>
-        <span class="vbar"></span>
-        <span class="vbar"></span>
-
-      </span>
-
-      Speaking…
-
-    </div>
-
-
-    <div id="modalContent"></div>
-
-  </div>
-
-</div>
-
-
-<!-- =========================================================
-     EXISTING JAVASCRIPT
-========================================================== -->
-
-<script src="app.js"></script>
-<script src="i18n.js"></script>
-<script src="patient.js"></script>
-
-
-<!-- =========================================================
-     MINDBUDDY
-========================================================== -->
-
-<div class="ai-helper-container">
-
-  <!-- Chat Window -->
-
-  <div
-    id="aiChatBox"
-    class="ai-chat-box">
-
-
-    <div class="ai-chat-header">
-
-      <div class="ai-helper-title">
-
-        <div class="ai-helper-avatar">
-          🧠
-        </div>
+      <div class="section-title">
 
         <div>
 
           <h3>
-            MindBuddy
+            😊 How are you feeling today?
           </h3>
 
+          <p>
+            Choose the smile that feels right.
+          </p>
+
+        </div>
+
+        <span>
+          💛
+        </span>
+
+      </div>
+
+
+      <div class="mood-grid">
+
+
+        <button
+          class="feeling-btn"
+          type="button"
+          data-feeling="Great">
+
+          <span class="emoji">
+            😄
+          </span>
+
+          Great
+
+        </button>
+
+
+        <button
+          class="feeling-btn"
+          type="button"
+          data-feeling="Good">
+
+          <span class="emoji">
+            🙂
+          </span>
+
+          Good
+
+        </button>
+
+
+        <button
+          class="feeling-btn"
+          type="button"
+          data-feeling="Okay">
+
+          <span class="emoji">
+            😐
+          </span>
+
+          Okay
+
+        </button>
+
+
+        <button
+          class="feeling-btn"
+          type="button"
+          data-feeling="Low">
+
+          <span class="emoji">
+            😔
+          </span>
+
+          Low
+
+        </button>
+
+
+        <button
+          class="feeling-btn"
+          type="button"
+          data-feeling="Worried">
+
+          <span class="emoji">
+            😟
+          </span>
+
+          Worried
+
+        </button>
+
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         GAMES + MEMORIES
+         ===================================================== -->
+
+    <div class="games-memory-row">
+
+
+      <!-- =================================================
+           GAMES
+           ================================================= -->
+
+      <section
+        class="dashboard-section games-main-card"
+        id="gamesSection">
+
+
+        <div>
+
+          <div class="games-memory-icon">
+            🎮
+          </div>
+
+
+          <div class="games-memory-content">
+
+            <h3>
+              Games
+            </h3>
+
+
+            <p>
+              Fun activities to exercise your memory,
+              attention and thinking.
+            </p>
+
+
+            <button
+              class="games-view-button"
+              id="gamesViewAll"
+              type="button">
+
+              Play Games →
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="games-mini-icons">
+
           <span>
-            Your personal helper
+            🧠 Memory
+          </span>
+
+          <span>
+            🎯 Focus
+          </span>
+
+          <span>
+            🧩 Thinking
           </span>
 
         </div>
 
-      </div>
+
+      </section>
 
 
-      <button
-        id="closeAiChat"
-        class="ai-close-btn"
-        aria-label="Close chat">
 
-        ×
+      <!-- =================================================
+           MEMORIES & MOMENTS
+           ================================================= -->
 
-      </button>
+      <section
+        class="dashboard-section memories-main-card"
+        id="memoriesSection">
+
+
+        <div>
+
+          <div class="memories-memory-icon">
+            🌸
+          </div>
+
+
+          <div class="games-memory-content">
+
+            <h3>
+              Memories &amp; Moments
+            </h3>
+
+
+            <p>
+              Keep your special memories close.
+              Add a photo or write about a happy moment.
+            </p>
+
+
+            <div class="memory-actions">
+
+
+              <button
+                class="memory-action-button"
+                type="button"
+                id="addPhotoBtn">
+
+                📷 Add Photo
+
+              </button>
+
+
+              <button
+                class="memory-action-button"
+                type="button"
+                id="writeMemoryBtn">
+
+                ✍️ Write a Memory
+
+              </button>
+
+
+            </div>
+
+
+            <input
+              type="file"
+              id="memoryPhotoInput"
+              accept="image/*">
+
+
+            <div
+              id="memoryPreview"
+              class="memory-preview">
+
+            </div>
+
+
+          </div>
+
+        </div>
+
+
+      </section>
+
 
     </div>
 
 
-    <!-- Messages -->
+
+    <!-- =====================================================
+         HIDDEN START BUTTON
+         Required by existing patient.js
+         ===================================================== -->
+
+    <button
+      id="startBtn"
+      type="button">
+
+      Start
+
+    </button>
+
+
+
+    <!-- =====================================================
+         TODAY'S LITTLE WINS
+         ONLY TWO ITEMS
+         ===================================================== -->
+
+    <section class="dashboard-section">
+
+
+      <div class="section-title">
+
+        <div>
+
+          <h3>
+            ☀️ Today's Little Wins
+          </h3>
+
+          <p>
+            Small moments that bring happy memories closer.
+          </p>
+
+        </div>
+
+        <span>
+          💛
+        </span>
+
+      </div>
+
+
+      <div class="wins-grid">
+
+
+        <!-- ===============================================
+             MEMORY MOVEMENT
+             =============================================== -->
+
+        <div class="win-card memory">
+
+          <h4>
+            🧠 Memory Movement
+          </h4>
+
+          <p>
+            Exercise your memory with a gentle
+            brain activity.
+          </p>
+
+        </div>
+
+
+
+        <!-- ===============================================
+             REMEMBER SOMETHING HAPPY
+             =============================================== -->
+
+        <div
+          class="win-card happy"
+          id="happyMemoryBtn">
+
+          <h4>
+            💗 Remember Something Happy
+          </h4>
+
+          <p>
+            Do well in your games to unlock
+            a special memory from your family.
+          </p>
+
+
+          <p
+            id="happyMemoryAction"
+            style="margin-top:8px;">
+
+            🔒 Locked — play a game to unlock
+
+          </p>
+
+
+          <div
+            id="familyMemoryUnlocked"
+            style="display:none;">
+
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         TODAY'S PLAN
+         ===================================================== -->
+
+    <section class="dashboard-section">
+
+
+      <div class="section-title">
+
+        <div>
+
+          <h3>
+            📅 Today's Plan
+          </h3>
+
+          <p>
+            Your little reminders for today.
+          </p>
+
+        </div>
+
+        <span>
+          🌈
+        </span>
+
+      </div>
+
+
+      <div class="plan-grid">
+
+
+        <div class="plan-card">
+
+          💊
+
+          <strong>
+            Medicine
+          </strong>
+
+          <span>
+            Take your medicine on time
+          </span>
+
+        </div>
+
+
+        <div class="plan-card">
+
+          📅
+
+          <strong>
+            Appointment
+          </strong>
+
+          <span>
+            Check today's appointment
+          </span>
+
+        </div>
+
+
+        <div class="plan-card">
+
+          💧
+
+          <strong>
+            Hydration
+          </strong>
+
+          <span>
+            Remember to drink water
+          </span>
+
+        </div>
+
+
+        <div class="plan-card">
+
+          🚶
+
+          <strong>
+            Exercise
+          </strong>
+
+          <span>
+            Take a gentle walk
+          </span>
+
+        </div>
+
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         RECENT ACTIVITY + HELPFUL REMINDERS
+         ===================================================== -->
+
+    <section class="activity-grid">
+
+
+      <!-- ===============================================
+           RECENT ACTIVITY
+           =============================================== -->
+
+      <div class="activity-panel">
+
+        <h3>
+          📊 Recent Activity
+        </h3>
+
+        <p class="sub">
+          Your latest cognitive sessions
+        </p>
+
+
+        <div id="activityList">
+
+          <p class="empty-state">
+            No sessions yet
+          </p>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===============================================
+           HELPFUL REMINDERS
+           =============================================== -->
+
+      <div class="activity-panel">
+
+        <h3>
+          🔔 Helpful Reminders
+        </h3>
+
+        <p class="sub">
+          Updates and reminders
+        </p>
+
+
+        <div id="alertsList">
+
+          <p class="empty-state">
+            No reminders yet
+          </p>
+
+        </div>
+
+      </div>
+
+
+    </section>
+
+
+
+    <!-- =====================================================
+         MINDBUDDY
+         ===================================================== -->
+
+    <section class="mindbuddy-section">
+
+
+      <div class="mindbuddy-left">
+
+
+        <div class="mindbuddy-icon">
+          💬
+        </div>
+
+
+        <div>
+
+          <h3>
+            Talk to MindBuddy
+          </h3>
+
+          <p>
+            Need someone to talk to?
+          </p>
+
+        </div>
+
+
+      </div>
+
+
+      <button
+        class="mindbuddy-open"
+        id="openMindBuddy"
+        type="button">
+
+        Open Chat →
+
+      </button>
+
+
+    </section>
+
+
+
+    <!-- =====================================================
+         HIDDEN DATA
+         Required by existing patient.js
+         ===================================================== -->
+
+    <section
+      class="hidden-data"
+      aria-hidden="true">
+
+
+      <!-- Average score -->
+
+      <div
+        class="stat-card"
+        id="avgCard">
+
+        <span id="avgScore">
+          0%
+        </span>
+
+        <span id="avgLabel">
+          Average score
+        </span>
+
+      </div>
+
+
+      <!-- Minutes active -->
+
+      <div
+        class="stat-card"
+        id="minsCard">
+
+        <span id="minsActive">
+          0
+        </span>
+
+        <span id="minsLabel">
+          Minutes active
+        </span>
+
+      </div>
+
+
+      <!-- Best score -->
+
+      <div
+        class="stat-card"
+        id="bestCard">
+
+        <span id="bestScore">
+          0%
+        </span>
+
+        <span id="bestLabel">
+          Best score
+        </span>
+
+      </div>
+
+
+      <!-- Wellbeing -->
+
+      <div id="wellbeingTitle">
+        Wellbeing Index
+      </div>
+
+      <div id="wellbeingSub">
+        AI-assessed cognitive mood
+      </div>
+
+      <div id="wellbeingNum">
+        0
+      </div>
+
+      <div id="wellbeingOutOf">
+        out of 100
+      </div>
+
+
+      <!-- Donut -->
+
+      <svg
+        width="0"
+        height="0">
+
+        <circle
+          id="donutRing"
+          stroke-dasharray="452"
+          stroke-dashoffset="452">
+        </circle>
+
+      </svg>
+
+
+      <!-- Tags -->
+
+      <div id="tagsWrap"></div>
+
+
+      <!-- Gifts retained for JS compatibility -->
+
+      <div id="giftsSub"></div>
+
+      <div id="patientGifts"></div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         GAME MODAL
+         ===================================================== -->
 
     <div
-      id="aiChatMessages"
-      class="ai-chat-messages">
+      class="modal-bg"
+      id="modalBg">
 
-      <div class="ai-message ai-bot-message">
 
-        <div class="ai-message-icon">
-          🧠
+      <div class="modal">
+
+
+        <button
+          class="close-x"
+          id="closeModal"
+          type="button"
+          aria-label="Close">
+
+          ✕
+
+        </button>
+
+
+        <div
+          class="voice-indicator"
+          id="voiceIndicator">
         </div>
 
-        <div class="ai-message-text">
 
-          Hello! I'm MindBuddy. 😊
-          <br>
-
-          I'm here to talk, help you remember things,
-          and keep you company.
-
+        <div id="modalContent">
         </div>
+
 
       </div>
 
-    </div>
-
-
-    <!-- Input -->
-
-    <div class="ai-chat-input-area">
-
-      <input
-        type="text"
-        id="aiChatInput"
-        placeholder="Type a message..."
-        autocomplete="off"
-      >
-
-      <button
-        id="aiSendBtn"
-        class="ai-send-btn"
-        aria-label="Send message">
-
-        ➤
-
-      </button>
 
     </div>
+
 
   </div>
 
 
-  <!-- Floating MindBuddy Button -->
 
-  <button
-    id="aiHelperButton"
-    class="ai-helper-button"
-    aria-label="Open MindBuddy">
+  <!-- =======================================================
+       MINDBUDDY FLOATING CHAT
+       ======================================================= -->
 
-    <div class="ai-helper-logo">
-      💬
+  <div class="ai-helper-container">
+
+
+    <!-- CHAT BOX -->
+
+    <div
+      id="aiChatBox"
+      class="ai-chat-box">
+
+
+      <!-- CHAT HEADER -->
+
+      <div class="ai-chat-header">
+
+
+        <div class="ai-helper-title">
+
+
+          <div class="ai-helper-avatar">
+            💬
+          </div>
+
+
+          <div>
+
+            <h3>
+              MindBuddy
+            </h3>
+
+            <span>
+              Here to chat
+            </span>
+
+          </div>
+
+
+        </div>
+
+
+        <button
+          id="closeAiChat"
+          class="ai-close-btn"
+          type="button"
+          aria-label="Close chat">
+
+          ✕
+
+        </button>
+
+
+      </div>
+
+
+      <!-- CHAT MESSAGES -->
+
+      <div
+        id="aiChatMessages"
+        class="ai-chat-messages">
+
+      </div>
+
+
+      <!-- CHAT INPUT -->
+
+      <div class="ai-chat-input-area">
+
+
+        <input
+          id="aiChatInput"
+          type="text"
+          placeholder="Type a message..."
+          autocomplete="off">
+
+
+        <button
+          id="aiSendBtn"
+          class="ai-send-btn"
+          type="button"
+          aria-label="Send message">
+
+          ➤
+
+        </button>
+
+
+      </div>
+
+
     </div>
 
-  </button>
-
-</div>
 
 
-<!-- =========================================================
-     SMALL FRONT-END INTERACTIONS
-========================================================== -->
+    <!-- FLOATING BUTTON -->
 
-<script>
+    <button
+      id="aiHelperButton"
+      class="ai-helper-button"
+      type="button"
+      aria-label="Open MindBuddy">
 
-document.addEventListener("DOMContentLoaded", function () {
+      <div class="ai-helper-logo">
+        💬
+      </div>
 
-  /* ---------------------------------------------------------
-     Feeling buttons
-  --------------------------------------------------------- */
-
-  const feelingButtons =
-    document.querySelectorAll(".feeling-btn");
-
-  const feelingResponse =
-    document.getElementById("feelingResponse");
+    </button>
 
 
-  feelingButtons.forEach(function (button) {
+  </div>
 
-    button.addEventListener("click", function () {
 
-      feelingButtons.forEach(function (item) {
-        item.classList.remove("selected");
-      });
 
-      button.classList.add("selected");
+  <!-- =======================================================
+       EXISTING SCRIPTS
+       DO NOT CHANGE THE ORDER
+       ======================================================= -->
 
-      const feeling = button.dataset.feeling;
+  <script src="app.js"></script>
 
-      const messages = {
+  <script src="i18n.js"></script>
 
-        happy:
-          "That's wonderful! Keep smiling. 🌸",
+  <script src="patient.js"></script>
 
-        good:
-          "I'm glad you're feeling good today. 💚",
 
-        okay:
-          "That's okay. Take things one step at a time. 🌷",
 
-        sad:
-          "It's okay to have a quiet day. I'm here with you. 💛",
+  <!-- =======================================================
+       DASHBOARD INTERACTIONS
+       ======================================================= -->
 
-        worried:
-          "Take a slow breath. You're not alone. 💙"
+  <script>
 
-      };
+    document.addEventListener("DOMContentLoaded", function () {
 
-      feelingResponse.textContent =
-        messages[feeling] || "";
+
+      /* =====================================================
+         MOOD CHECK-IN
+         ===================================================== */
+
+      document
+        .querySelectorAll(".feeling-btn")
+        .forEach(function (button) {
+
+          button.addEventListener("click", function () {
+
+
+            document
+              .querySelectorAll(".feeling-btn")
+              .forEach(function (b) {
+
+                b.classList.remove("selected");
+
+              });
+
+
+            button.classList.add("selected");
+
+
+          });
+
+        });
+
+
+
+      /* =====================================================
+         OPEN GAMES
+         ===================================================== */
+
+      var gamesViewAll =
+        document.getElementById("gamesViewAll");
+
+
+      var startButton =
+        document.getElementById("startBtn");
+
+
+      if (gamesViewAll && startButton) {
+
+        gamesViewAll.addEventListener(
+          "click",
+          function () {
+
+            startButton.click();
+
+          }
+        );
+
+      }
+
+
+
+      /* =====================================================
+         MEMORIES — ADD PHOTO
+         ===================================================== */
+
+      var addPhotoBtn =
+        document.getElementById("addPhotoBtn");
+
+
+      var memoryPhotoInput =
+        document.getElementById("memoryPhotoInput");
+
+
+      var memoryPreview =
+        document.getElementById("memoryPreview");
+
+
+      if (
+        addPhotoBtn &&
+        memoryPhotoInput
+      ) {
+
+        addPhotoBtn.addEventListener(
+          "click",
+          function () {
+
+            memoryPhotoInput.click();
+
+          }
+        );
+
+      }
+
+
+      if (
+        memoryPhotoInput &&
+        memoryPreview
+      ) {
+
+        memoryPhotoInput.addEventListener(
+          "change",
+          function () {
+
+
+            var file =
+              this.files &&
+              this.files[0];
+
+
+            if (!file) {
+              return;
+            }
+
+
+            if (
+              !file.type.startsWith("image/")
+            ) {
+
+              return;
+
+            }
+
+
+            var reader =
+              new FileReader();
+
+
+            reader.onload =
+              function (event) {
+
+
+                memoryPreview.innerHTML =
+                  '<img src="' +
+                  event.target.result +
+                  '" alt="Selected memory photo">';
+
+
+                memoryPreview.classList.add(
+                  "show"
+                );
+
+
+              };
+
+
+            reader.readAsDataURL(file);
+
+
+          }
+        );
+
+      }
+
+
+
+      /* =====================================================
+         MEMORIES — WRITE MEMORY
+         ===================================================== */
+
+      var writeMemoryBtn =
+        document.getElementById(
+          "writeMemoryBtn"
+        );
+
+
+      if (writeMemoryBtn) {
+
+        writeMemoryBtn.addEventListener(
+          "click",
+          function () {
+
+
+            var memory =
+              prompt(
+                "What would you like to remember?"
+              );
+
+
+            if (
+              !memory ||
+              !memory.trim()
+            ) {
+
+              return;
+
+            }
+
+
+            alert(
+              "Your memory has been added:\n\n" +
+              memory.trim()
+            );
+
+
+          }
+        );
+
+      }
+
+
+
+      /* =====================================================
+         MINDBUDDY
+         ===================================================== */
+
+      var openMindBuddy =
+        document.getElementById(
+          "openMindBuddy"
+        );
+
+
+      var aiHelperButton =
+        document.getElementById(
+          "aiHelperButton"
+        );
+
+
+      if (
+        openMindBuddy &&
+        aiHelperButton
+      ) {
+
+        openMindBuddy.addEventListener(
+          "click",
+          function () {
+
+            aiHelperButton.click();
+
+          }
+        );
+
+      }
+
 
     });
 
-  });
+  </script>
 
-
-  /* ---------------------------------------------------------
-     Game shortcut
-  --------------------------------------------------------- */
-
-  const gameButton =
-    document.getElementById("winGame");
-
-  const startButton =
-    document.getElementById("startBtn");
-
-
-  if (gameButton && startButton) {
-
-    gameButton.addEventListener("click", function () {
-
-      startButton.click();
-
-    });
-
-  }
-
-
-  /* ---------------------------------------------------------
-     Simple plan interaction
-  --------------------------------------------------------- */
-
-  document
-    .querySelectorAll(".plan-item")
-    .forEach(function (item) {
-
-      item.addEventListener("click", function () {
-
-        const check =
-          item.querySelector(".plan-check");
-
-        if (!check) return;
-
-        if (check.textContent === "○") {
-
-          check.textContent = "✓";
-
-          item.classList.add("completed");
-
-        } else {
-
-          check.textContent = "○";
-
-          item.classList.remove("completed");
-
-        }
-
-      });
-
-    });
-
-});
-
-</script>
 
 </body>
+
 </html>
