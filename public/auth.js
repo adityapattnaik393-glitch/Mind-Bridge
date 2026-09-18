@@ -199,6 +199,9 @@
             markInvalid("email", true);
             say("This email already has an account. Please sign in instead.");
             break;
+          case 429:
+            say("Confirmation email limit reached. Wait about an hour, then try again. An administrator can remove this limit by configuring custom SMTP in Supabase.");
+            break;
           case 503:
             say("Service temporarily unavailable. Please try again later.");
             break;

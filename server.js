@@ -361,6 +361,12 @@ app.post("/api/auth/signup", async (req, res) => {
 
     if (error) {
         const alreadyExists = /already registered|already exists|User already/i.test(error.message);
+        const emailRateLimited = /rate limit|email rate limit|too many requests/i.test(error.message);
+        if (emailRateLimited) {
+            return res.status(429).json({
+                error: "Too many confirmation emails were requested. Wait about an hour before trying again, or configure custom SMTP in Supabase Auth."
+            });
+        }
         return res.status(alreadyExists ? 409 : 400).json({
             error: alreadyExists
                 ? "This email already has an account. Please sign in instead."

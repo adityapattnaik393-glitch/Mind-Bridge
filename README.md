@@ -22,6 +22,11 @@ RESEND_API_KEY=re_your_key
 EMAIL_FROM=MindBridge <alerts@your-verified-domain.com>
 ```
 
+For account confirmation emails, Supabase's default mail service has a low
+rate limit. Configure custom SMTP under Supabase Dashboard -> Authentication
+-> SMTP Settings, or wait for the limit to reset before creating another test
+account. Do not repeatedly submit the signup form while waiting.
+
 5. Install and start:
 
 ```bash
