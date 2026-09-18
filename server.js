@@ -43,12 +43,24 @@ const TIME_ZONE = process.env.APP_TIME_ZONE || "Asia/Kolkata";
 const caregiverEmail = process.env.CAREGIVER_EMAIL || process.env.EMAIL_USER;
 
 const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    tls: {
+        rejectUnauthorized: false
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000
 });
+
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("Gmail email notifications disabled: EMAIL_USER and EMAIL_PASS must be set in the deployment environment.");
+}
 
 async function sendCaregiverEmail({ to, subject, text }) {
     const recipient = normaliseEmail(to);
