@@ -1037,7 +1037,7 @@
       try {
         await MB.api("/api/scores", {
           method: "POST",
-          body: JSON.stringify({ name: name, score: score, attempts: 1, durationSeconds: duration, difficulty: "easy" })
+          body: JSON.stringify({ name: name, score: score, attempts: 1, durationSeconds: duration, difficulty:selectedDifficulty })
         });
         await loadSummary(true);
         await loadGifts();
