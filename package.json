@@ -10,6 +10,8 @@
     "cors": "^2.x",
     "dotenv": "^16.x",
     "express": "^4.x",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.10",
     "resend": "^0.x",
     "twilio": "^3.x"
   },

@@ -10,6 +10,8 @@
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
+const nodemailer = require("nodemailer");
+const cron = require("node-cron");
 const { createClient } = require("@supabase/supabase-js");
 const sendEmail = require("./public/utils/email");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -38,10 +40,25 @@ const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY
     || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 const TIME_ZONE = process.env.APP_TIME_ZONE || "Asia/Kolkata";
+const caregiverEmail = process.env.CAREGIVER_EMAIL || process.env.EMAIL_USER;
+
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 /* Base client — used for auth calls only (signUp / signIn / refresh). */
 const supabase = supabaseUrl && supabaseKey
     ? createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } })
+    : null;
+
+const scheduledJobSupabase = supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+    })
     : null;
 
 /* Per-request client carrying the caller's access token, so Row Level Security
@@ -64,7 +81,6 @@ const SUPPORTED_LANGUAGES = [
     { code: "as", label: "Assamese",           native: "অসমীয়া",         speech: "as-IN" },
     { code: "mni", label: "Manipuri (Meitei)", native: "ꯃꯤꯇꯩꯂꯣꯟ",        speech: "mni-IN" },
     { code: "bn", label: "Bengali",            native: "বাংলা",           speech: "bn-IN" },
-    { code: "ne", label: "Nepali",             native: "नेपाली",          speech: "ne-NP" },
     { code: "kha", label: "Khasi",             native: "Ka Ktien Khasi", speech: "en-IN" },
     { code: "lus", label: "Mizo",              native: "Mizo ṭawng",     speech: "en-IN" },
     { code: "brx", label: "Bodo",              native: "बर'",            speech: "hi-IN" },
@@ -347,6 +363,7 @@ app.post("/api/auth/signup", async (req, res) => {
         name: patientName.trim(),
         caretaker_name: caretakerName.trim(),
         caretaker_mobile: normalisedMobileNumber || null,
+        caretaker_email: normalisedEmail,
         preferred_language: language.label,
         language_code: language.code,
         age: Number(age) || 72,
@@ -408,7 +425,7 @@ app.post("/api/auth/refresh", async (req, res) => {
 async function readProfile(auth) {
     const { data } = await auth.db
         .from("patients")
-        .select("id, name, age, region, preferred_language, language_code, streak, caretaker_name, caretaker_mobile")
+        .select("id, name, age, region, preferred_language, language_code, streak, caretaker_name, caretaker_mobile, caretaker_email")
         .eq("user_id", auth.user.id)
         .maybeSingle();
 
@@ -421,6 +438,7 @@ async function readProfile(auth) {
         id: row.id || auth.user.id,
         patientName: row.name || meta.patient_name || "Patient",
         caretakerName: row.caretaker_name || meta.caretaker_name || "Caretaker",
+        caretakerEmail: row.caretaker_email || auth.user.email || "",
         email: auth.user.email || "",
         mobile: row.caretaker_mobile || meta.mobile || "",
         age: row.age || Number(meta.age) || 72,
@@ -892,6 +910,15 @@ async function logAlert(auth, body, res) {
     const { alertTitle, alertBody, kind = "reminder", status = "Acknowledged" } = body || {};
     if (!alertTitle) return res.status(400).json({ error: "An alert title is required." });
 
+    const { data: patient, error: patientError } = await auth.db
+        .from("patients")
+        .select("name, caretaker_name, caretaker_email")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
+
+    if (patientError) return res.status(500).json({ error: patientError.message });
+    console.log("Database returned:", patient);
+
     const { data, error } = await auth.db
         .from("cognitive_alerts")
         .insert({
@@ -899,12 +926,32 @@ async function logAlert(auth, body, res) {
             alert_title: alertTitle,
             alert_body: alertBody || null,
             kind,
-            status
+            status,
+            caretaker_email: patient?.caretaker_email || null
         })
         .select("id, alert_title, alert_body, kind, status, created_at")
         .single();
 
     if (error) return res.status(500).json({ error: error.message });
+
+    if (String(status).toLowerCase() === "acknowledged") {
+        if (patient?.caretaker_email) {
+            try {
+                const emailResult = await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: patient.caretaker_email,
+                    subject: `Task Completed: ${alertTitle}`,
+                    text: `${patient.name || "The patient"} completed "${alertTitle}".\n\nDetails: ${alertBody || "No additional details."}\nTime: ${new Date().toLocaleString("en-IN", { timeZone: TIME_ZONE })}`
+                });
+                console.log("Completion email sent:", emailResult.messageId, "to", patient.caretaker_email);
+            } catch (emailError) {
+                console.error("Completion email failed:", emailError.message);
+            }
+        } else {
+            console.warn("Completion email skipped: patient caretaker_email is missing.");
+        }
+    }
+
     res.status(201).json({ success: true, alert: data });
     return true;
 }
@@ -958,6 +1005,96 @@ app.post("/api/gifts", async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ gift: data });
 });
+/* Check the database for reminders still not acknowledged at the end of day. */
+cron.schedule("0 20 * * *", async () => {
+    if (!scheduledJobSupabase || !caregiverEmail) {
+        console.warn("Missed-task email skipped: service-role Supabase client or caregiver email is not configured.");
+        return;
+    }
+
+    try {
+        const today = todayKey();
+        const { data: alerts, error: alertsError } = await scheduledJobSupabase
+            .from("cognitive_alerts")
+            .select("user_id, caretaker_email, alert_title, alert_body, status, created_at")
+            .order("created_at", { ascending: false })
+            .limit(500);
+
+        if (alertsError) throw alertsError;
+
+        const todayAlerts = (alerts || []).filter((alert) => localDay(alert.created_at) === today);
+        const { data: patients, error: patientsError } = await scheduledJobSupabase
+            .from("patients")
+            .select("user_id, name, caretaker_email");
+
+        if (patientsError) throw patientsError;
+
+        const acknowledgedByUser = new Map();
+        todayAlerts
+            .filter((alert) => String(alert.status || "").toLowerCase() === "acknowledged")
+            .forEach((alert) => {
+                const titles = acknowledgedByUser.get(alert.user_id) || new Set();
+                titles.add(alert.alert_title.toLowerCase());
+                acknowledgedByUser.set(alert.user_id, titles);
+            });
+
+        const missedAlerts = (patients || []).flatMap((patient) => {
+            const acknowledged = acknowledgedByUser.get(patient.user_id) || new Set();
+            return SEED_ALERTS
+                .filter((task) => !acknowledged.has(task.title.toLowerCase()))
+                .map((task) => ({
+                    user_id: patient.user_id,
+                    alert_title: task.title,
+                    alert_body: task.body,
+                    patient_name: patient.name,
+                    caretaker_email: patient.caretaker_email
+                }));
+        });
+
+        const explicitlyUnacknowledged = todayAlerts.filter((alert) =>
+            localDay(alert.created_at) === today
+            && String(alert.status || "").toLowerCase() !== "acknowledged"
+        );
+        explicitlyUnacknowledged.forEach((alert) => {
+            const alreadyListed = missedAlerts.some((missed) =>
+                missed.user_id === alert.user_id
+                && missed.alert_title.toLowerCase() === alert.alert_title.toLowerCase()
+            );
+            if (!alreadyListed) {
+                missedAlerts.push({
+                    ...alert,
+                    patient_name: (patients || []).find((patient) => patient.user_id === alert.user_id)?.name,
+                    caretaker_email: alert.caretaker_email || (patients || []).find((patient) => patient.user_id === alert.user_id)?.caretaker_email
+                });
+            }
+        });
+
+        if (!missedAlerts.length) {
+            console.log("No unacknowledged tasks found for today.");
+            return;
+        }
+
+        const tasksByEmail = new Map();
+        missedAlerts.forEach((alert) => {
+            const email = alert.caretaker_email || caregiverEmail;
+            const lines = tasksByEmail.get(email) || [];
+            lines.push(`- ${alert.patient_name || "Patient"}: ${alert.alert_title}${alert.alert_body ? ` - ${alert.alert_body}` : ""}`);
+            tasksByEmail.set(email, lines);
+        });
+
+        for (const [email, tasks] of tasksByEmail) {
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "MindBridge Alert: Incomplete daily tasks",
+                text: `The following tasks were not acknowledged today:\n\n${tasks.join("\n")}\n\nPlease check in with the patient.`
+            });
+        }
+        console.log("Missed-task warning email sent to caregiver.");
+    } catch (error) {
+        console.error("Missed-task email failed:", error.message);
+    }
+}, { timezone: TIME_ZONE });
 
 /* ============================================================
    AI CHAT ROUTE

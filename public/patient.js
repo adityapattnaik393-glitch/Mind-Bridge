@@ -512,9 +512,9 @@
       var card = document.createElement("div");
       card.className = "word-card";
       card.style.fontSize = "22px";
-      card.textContent = "❔";
+      card.textContent = icon;
       card.dataset.icon = icon;
-      card.dataset.state = "hidden";
+      card.dataset.state = "preview";
 
       card.addEventListener("click", function () {
         if (card.dataset.state !== "hidden" || flipped.length === 2) return;
@@ -551,6 +551,18 @@
       });
       grid.appendChild(card);
     });
+
+    var previewSeconds = selectedDifficulty === "hard" ? 4 : 3;
+    speak("Memorize the cards. They will flip in " + previewSeconds + " seconds.");
+    setTimeout(function () {
+      Array.prototype.forEach.call(grid.querySelectorAll(".word-card"), function (card) {
+        if (card.dataset.state === "preview") {
+          card.textContent = "❔";
+          card.dataset.state = "hidden";
+        }
+      });
+      speak(t("findPairs"));
+    }, previewSeconds * 1000);
   }
 
   function startPicturePath() {
