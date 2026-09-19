@@ -86,6 +86,8 @@ class OfflineManager {
    * Sync scores to server when online
    */
   async syncScores() {
+    if (!navigator.onLine) return;
+
     const unsynced = this.getUnsyncedScores();
     
     if (unsynced.length === 0) {

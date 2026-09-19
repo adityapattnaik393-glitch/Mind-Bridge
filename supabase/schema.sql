@@ -77,6 +77,9 @@ alter table public.game_scores add column if not exists difficulty       text de
 create index if not exists game_scores_user_created_idx
   on public.game_scores (user_id, created_at desc);
 
+create index if not exists game_scores_user_local_day_idx
+  on public.game_scores (user_id, ((created_at at time zone 'Asia/Kolkata')::date));
+
 -- ---------------------------------------------------------------------------
 -- 3. COGNITIVE ALERTS  (caregiver reminders + acknowledgements)
 -- ---------------------------------------------------------------------------
@@ -219,15 +222,68 @@ for each row execute procedure public.handle_new_user();
 create or replace view public.daily_progress
 with (security_invoker = true) as
 select
-  user_id,
-  (created_at at time zone 'Asia/Kolkata')::date as day,
+  gs.user_id,
+  (gs.created_at at time zone 'Asia/Kolkata')::date as day,
   count(*)                                       as sessions,
-  round(avg(score))::int                         as avg_score,
-  max(score)                                     as best_score,
-  min(score)                                     as low_score,
-  round(sum(coalesce(duration_seconds, 180)) / 60.0)::int as minutes
-from public.game_scores
-group by user_id, (created_at at time zone 'Asia/Kolkata')::date;
+  round(avg(gs.score))::int                     as avg_score,
+  max(gs.score)                                  as best_score,
+  min(gs.score)                                  as low_score,
+  round(sum(coalesce(gs.duration_seconds, 180)) / 60.0)::int as minutes,
+  p.streak                                      as streak
+from public.game_scores as gs
+join public.patients as p on p.user_id = gs.user_id
+group by gs.user_id, (gs.created_at at time zone 'Asia/Kolkata')::date, p.streak;
+
+-- Keep the cached patient streak current whenever a session is recorded.
+create or replace function public.calculate_and_update_streak()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  local_today date := (now() at time zone 'Asia/Kolkata')::date;
+  latest_day date;
+  calculated_streak integer := 0;
+begin
+  with date_list as (
+    select distinct (created_at at time zone 'Asia/Kolkata')::date as game_date
+    from public.game_scores
+    where user_id = new.user_id
+  )
+  select max(game_date)
+  into latest_day
+  from date_list;
+
+  if latest_day >= local_today - 1 then
+    with date_list as (
+      select distinct (created_at at time zone 'Asia/Kolkata')::date as game_date
+      from public.game_scores
+      where user_id = new.user_id
+    ),
+    ranked_days as (
+      select game_date,
+             row_number() over (order by game_date desc) - 1 as days_back
+      from date_list
+    )
+    select count(*)::integer
+    into calculated_streak
+    from ranked_days
+    where game_date = latest_day - days_back::integer;
+  end if;
+
+  update public.patients
+  set streak = calculated_streak,
+      updated_at = now()
+  where user_id = new.user_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists update_streak_on_score_insert on public.game_scores;
+create trigger update_streak_on_score_insert
+after insert on public.game_scores
+for each row execute procedure public.calculate_and_update_streak();
 
 -- Word Garden history is not required by the application.
 drop table if exists public.word_garden_history;

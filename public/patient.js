@@ -8,7 +8,7 @@
 (function () {
   "use strict";
 
-  //if (!MB.requireSession()) return;
+  if (!MB.requireSession()) return;
 
   var t = I18N.t;
   var state = {
@@ -1796,6 +1796,28 @@
 
         grid.appendChild(card);
       });
+  }
+
+  function renderOfflineActivity() {
+    if (!window.offlineManager) return;
+
+    var recent = window.offlineManager.getAllScores()
+      .slice()
+      .sort(function (a, b) {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      })
+      .slice(0, 12)
+      .map(function (row) {
+        var meta = MB.gameMeta(row.game_type);
+        return {
+          game_type: row.game_type,
+          category: meta.category,
+          score: Number(row.score || 0),
+          created_at: row.timestamp
+        };
+      });
+
+    renderActivity(recent);
   }
 
   /* =========================================================
@@ -4506,10 +4528,16 @@
   async function loadSummary(
     animate
   ) {
-    var summary =
-      await MB.api(
-        "/api/summary?days=7"
-      );
+    var summary;
+    try {
+      summary = await MB.api("/api/summary?days=7");
+    } catch (error) {
+      if (!navigator.onLine && window.offlineManager) {
+        renderOfflineActivity();
+        throw error;
+      }
+      throw error;
+    }
 
     state.summary =
       summary;
@@ -4614,6 +4642,10 @@
 
   (async function boot() {
     try {
+      if (window.offlineManager && navigator.onLine) {
+        await window.offlineManager.syncScores();
+      }
+
       await loadSummary(
         false
       );

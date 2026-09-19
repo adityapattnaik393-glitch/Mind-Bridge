@@ -501,7 +501,7 @@ async function getPatientAIContext(auth) {
         .select("game_type, category, score, attempts, duration_seconds, created_at")
         .eq("user_id", auth.user.id)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(1000);
 
     if (error) {
         throw new Error("Unable to load patient game history.");
@@ -629,6 +629,53 @@ app.post("/api/scores", async (req, res) => {
         .eq("user_id", auth.user.id);
 
     res.status(201).json({ ...data, day: localDay(data.created_at), streak });
+});
+
+app.get("/api/recent-activity", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 10, 1), 50);
+    const { data, error } = await auth.db
+        .from("game_scores")
+        .select("id, game_type, category, score, difficulty, duration_seconds, created_at")
+        .eq("user_id", auth.user.id)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json({
+        success: true,
+        recent_activity: (data || []).map((row) => ({
+            id: row.id,
+            game: row.game_type,
+            category: row.category || CATEGORY_BY_GAME[row.game_type] || "Cognitive",
+            score: row.score,
+            difficulty: row.difficulty || "easy",
+            duration: Math.round(Number(row.duration_seconds || 180) / 60),
+            duration_seconds: row.duration_seconds || 180,
+            timestamp: row.created_at,
+            date: localDay(row.created_at)
+        })),
+        total_sessions: data?.length || 0
+    });
+});
+
+app.get("/api/streak", async (req, res) => {
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+
+    const { data: patient, error } = await auth.db
+        .from("patients")
+        .select("streak")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
+
+    if (error) return res.status(500).json({ error: error.message });
+    if (!patient) return res.status(404).json({ error: "Patient not found." });
+    res.json({ success: true, streak: patient.streak || 0 });
 });
 
 /* ---- summary (drives both dashboards) ------------------------------------*/
