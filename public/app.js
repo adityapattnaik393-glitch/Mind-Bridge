@@ -164,7 +164,13 @@
     "Word Garden":  { emoji: "🌱", category: "Language", key: "word" },
     "Memory Match": { emoji: "🧠", category: "Memory",   key: "memory" },
     "Picture Path": { emoji: "🔍", category: "Focus",    key: "picture" },
-    "Color Clash":  { emoji: "🎨", category: "Executive Function", key: "color" }
+    "Color Clash":  { emoji: "🎨", category: "Executive Function", key: "color" },
+    "Sort & Match": { emoji: "🧺", category: "Reasoning", key: "category" },
+    "Pattern Recall": { emoji: "🔢", category: "Working Memory", key: "sequence" },
+    "Letter Scramble": { emoji: "🔤", category: "Language", key: "scramble" },
+    "Candy Match": { emoji: "🍬", category: "Cognitive", key: "candy" },
+    "Odd One Out": { emoji: "🟡", category: "Reasoning", key: "odd" },
+    "Chess": { emoji: "♟️", category: "Planning", key: "chess" }
   };
 
   function gameMeta(name) {

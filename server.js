@@ -188,7 +188,13 @@ const CATEGORY_BY_GAME = {
     "Word Garden": "Language",
     "Memory Match": "Memory",
     "Picture Path": "Focus",
-    "Color Clash": "Executive Function"
+    "Color Clash": "Executive Function",
+    "Sort & Match": "Reasoning",
+    "Pattern Recall": "Working Memory",
+    "Letter Scramble": "Language",
+    "Candy Match": "Cognitive",
+    "Odd One Out": "Reasoning",
+    "Chess": "Planning"
 };
 
 /** Consecutive days with at least one session, counting back from today. */

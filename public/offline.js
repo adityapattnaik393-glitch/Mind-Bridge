@@ -16,6 +16,12 @@ class OfflineManager {
     
     // Show connection status
     this.showConnectionStatus();
+
+    // Flush scores queued during an earlier network interruption as soon as
+    // the dashboard is opened again.
+    if (navigator.onLine) {
+      this.syncScores().catch(error => console.log(`⚠️ Sync failed, will retry later: ${error.message}`));
+    }
   }
 
   /**
@@ -31,22 +37,32 @@ class OfflineManager {
       synced: false
     };
 
-    // Get existing scores
-    const scores = this.getAllScores();
-    
-    // Add new score
-    scores.push(scoreData);
-    
-    // Save to localStorage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(scores));
-    
-    console.log('✅ Score saved offline:', scoreData);
-    
-    // Try to sync immediately so dashboards can show the new session.
-    if (navigator.onLine) {
-      await this.syncScores();
+    // Reach the database first. navigator.onLine can be false even when the
+    // app server is reachable, which would otherwise hide online sessions in
+    // localStorage and keep them out of both dashboards.
+    try {
+      const saved = await MB.api('/api/scores', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: gameType,
+          score: score,
+          difficulty: difficulty,
+          durationSeconds: durationSeconds
+        })
+      });
+
+      console.log('✅ Score saved to database:', saved);
+      return saved;
+    } catch (error) {
+      // HTTP/API errors indicate a real server or schema problem and must be
+      // shown to the user instead of being mislabeled as offline data.
+      if (error && error.status) throw error;
     }
     
+    const scores = this.getAllScores();
+    scores.push(scoreData);
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(scores));
+    console.log('✅ Score saved offline:', scoreData);
     return scoreData;
   }
 
