@@ -21,11 +21,12 @@ class OfflineManager {
   /**
    * Save game score locally
    */
-  async saveGameScore(gameType, score, difficulty) {
+  async saveGameScore(gameType, score, difficulty, durationSeconds) {
     const scoreData = {
       game_type: gameType,
       score: score,
       difficulty: difficulty,
+      duration_seconds: durationSeconds,
       timestamp: new Date().toISOString(),
       synced: false
     };
@@ -41,8 +42,10 @@ class OfflineManager {
     
     console.log('✅ Score saved offline:', scoreData);
     
-    // Try to sync if online
-    if (navigator.onLine) await this.syncScores();
+    // Try to sync immediately so dashboards can show the new session.
+    if (navigator.onLine) {
+      await this.syncScores();
+    }
     
     return scoreData;
   }
@@ -75,31 +78,29 @@ class OfflineManager {
     }
 
     console.log(`🔄 Syncing ${unsynced.length} scores...`);
+    let lastError = null;
 
     for (const score of unsynced) {
       try {
-        const response = await fetch('/api/scores', {
+        await MB.api('/api/scores', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('mindbridge_access_token')}`
-          },
           body: JSON.stringify({
             name: score.game_type,
             score: score.score,
-            difficulty: score.difficulty
+            difficulty: score.difficulty,
+            durationSeconds: score.duration_seconds
           })
         });
 
-        if (response.ok) {
-          // Mark as synced
-          this.markScoreSynced(score.timestamp);
-          console.log(`✅ Synced: ${score.game_type}`);
-        }
+        this.markScoreSynced(score.timestamp);
+        console.log(`✅ Synced: ${score.game_type}`);
       } catch (error) {
+        lastError = error;
         console.log(`⚠️ Sync failed, will retry later: ${error.message}`);
       }
     }
+
+    if (lastError) throw lastError;
   }
 
   /**
@@ -134,7 +135,7 @@ class OfflineManager {
   onlineDetected() {
     console.log('📡 Connection restored! Syncing data...');
     this.showOnlineNotification();
-    this.syncScores();
+    this.syncScores().catch(error => console.log(`⚠️ Sync failed, will retry later: ${error.message}`));
   }
 
   /**

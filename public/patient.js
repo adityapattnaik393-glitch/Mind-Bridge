@@ -853,7 +853,7 @@
   var cycleStartedAt = 0;
 
   /*
-    EXACTLY 5 GAMES PER STAGE.
+    GAMES AVAILABLE PER STAGE.
 
     No category labels are shown in the game chooser.
   */
@@ -885,12 +885,6 @@
         name: "Sort & Match",
         category: "Reasoning"
       },
-      {
-        key: "solitaire",
-        icon: "🃏",
-        name: "Classic Solitaire",
-        category: "Planning"
-      }
     ],
 
     medium: [
@@ -4012,9 +4006,6 @@
     } else if (key === "chess") {
       startChess();
 
-    } else if (key === "solitaire") {
-      startSolitaire();
-
     } else {
       startPicturePath();
     }
@@ -4139,7 +4130,36 @@
       80% IS THE PASSING THRESHOLD.
     */
 
+    var durationSeconds = Math.max(
+      1,
+      Math.round(
+        (Date.now() - sessionStartedAt) / 1000
+      )
+    );
+
+    var savePromise = window.offlineManager
+      ? window.offlineManager.saveGameScore(
+          name,
+          score,
+          selectedDifficulty,
+          durationSeconds
+        )
+      : MB.api("/api/scores", {
+          method: "POST",
+          body: JSON.stringify({
+            name: name,
+            score: score,
+            difficulty: selectedDifficulty,
+            durationSeconds: durationSeconds
+          })
+        });
+
     if (score < 80) {
+      savePromise
+        .then(function () {
+          return loadSummary(true);
+        })
+        .catch(handleError);
       showRetry(
         name,
         score
@@ -4240,7 +4260,7 @@
           }
 
           try {
-            await window.offlineManager.saveGameScore(name, score, selectedDifficulty);
+            await savePromise;
 
             await loadSummary(
               true

@@ -297,6 +297,56 @@
     console.error(error);
   }
 
+  function initCaretakerChat() {
+    var panel = document.getElementById("caretakerChatPanel");
+    var openButton = document.getElementById("caretakerChatOpen");
+    var closeButton = document.getElementById("caretakerChatClose");
+    var form = document.getElementById("caretakerChatForm");
+    var input = document.getElementById("caretakerChatInput");
+    var messages = document.getElementById("caretakerChatMessages");
+    if (!panel || !openButton || !closeButton || !form || !input || !messages) return;
+
+    function addMessage(text, isUser) {
+      var message = document.createElement("p");
+      message.className = "caretaker-chat-message" + (isUser ? " user" : "");
+      message.textContent = text;
+      messages.appendChild(message);
+      messages.scrollTop = messages.scrollHeight;
+      return message;
+    }
+
+    openButton.addEventListener("click", function () {
+      panel.classList.add("open");
+      panel.setAttribute("aria-hidden", "false");
+      input.focus();
+    });
+    closeButton.addEventListener("click", function () {
+      panel.classList.remove("open");
+      panel.setAttribute("aria-hidden", "true");
+    });
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var text = input.value.trim();
+      if (!text || input.disabled) return;
+      addMessage(text, true);
+      input.value = "";
+      input.disabled = true;
+      var reply = addMessage("Thinking...", false);
+      try {
+        var result = await MB.api("/api/ai/chat", {
+          method: "POST",
+          body: JSON.stringify({ message: text })
+        });
+        reply.textContent = result.reply || "I am here to help.";
+      } catch (error) {
+        reply.textContent = error.message || "I could not connect right now.";
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+    });
+  }
+
   async function load() {
     try {
       var summary = await MB.api("/api/summary?days=" + days);
@@ -347,6 +397,7 @@
     if (event.key === "Escape") closeDrawer();
   });
   setView("home");
+  initCaretakerChat();
 
   document.getElementById("logoutBtn").addEventListener("click", MB.signOut);
 

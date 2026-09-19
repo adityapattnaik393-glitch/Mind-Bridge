@@ -33,6 +33,30 @@
   .insight strong { color: var(--teal-700); }
   .insight p { margin: 0 0 6px; }
   .insight p:last-child { margin: 0; }
+
+  .caretaker-chat {
+    position: fixed; right: 22px; bottom: 22px; z-index: 20;
+  }
+  .caretaker-chat-toggle {
+    width: 56px; height: 56px; border: 0; border-radius: 50%;
+    background: var(--teal-700); color: #fff; font-size: 24px; cursor: pointer;
+    box-shadow: 0 8px 22px rgba(21, 82, 73, .24);
+  }
+  .caretaker-chat-panel {
+    display: none; position: absolute; right: 0; bottom: 70px; width: min(360px, calc(100vw - 32px));
+    background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 14px 35px rgba(29, 37, 33, .18); overflow: hidden;
+  }
+  .caretaker-chat-panel.open { display: block; }
+  .caretaker-chat-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--teal-100); }
+  .caretaker-chat-head h3 { margin: 0; font-size: 16px; }
+  .caretaker-chat-head button { border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--ink); }
+  .caretaker-chat-messages { height: 260px; overflow-y: auto; padding: 14px; }
+  .caretaker-chat-message { margin: 0 0 10px; padding: 9px 11px; border-radius: 12px; background: var(--surface-2); font: 14px/1.45 var(--sans); white-space: pre-wrap; }
+  .caretaker-chat-message.user { margin-left: 28px; background: var(--teal-100); }
+  .caretaker-chat-form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+  .caretaker-chat-form input { min-width: 0; flex: 1; border: 1px solid var(--line); border-radius: 9px; padding: 9px; font: 14px var(--sans); }
+  .caretaker-chat-form button { border: 0; border-radius: 9px; padding: 0 13px; background: var(--teal-700); color: #fff; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -291,6 +315,23 @@
     </div>
   </section>
 
+</div>
+
+<div class="caretaker-chat" id="caretakerChat">
+  <div class="caretaker-chat-panel" id="caretakerChatPanel" aria-hidden="true">
+    <div class="caretaker-chat-head">
+      <h3>MindBuddy for Caretakers</h3>
+      <button id="caretakerChatClose" type="button" aria-label="Close chat">&times;</button>
+    </div>
+    <div class="caretaker-chat-messages" id="caretakerChatMessages">
+      <p class="caretaker-chat-message">Ask about the patient’s recent game progress or ways to encourage practice.</p>
+    </div>
+    <form class="caretaker-chat-form" id="caretakerChatForm">
+      <input id="caretakerChatInput" type="text" maxlength="1000" placeholder="Ask MindBuddy..." autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  <button class="caretaker-chat-toggle" id="caretakerChatOpen" type="button" aria-label="Open MindBuddy">🧠</button>
 </div>
 
 <script src="app.js"></script>
