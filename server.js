@@ -14,6 +14,7 @@ const nodemailer = require("nodemailer");
 const cron = require("node-cron");
 const { createClient } = require("@supabase/supabase-js");
 const sendEmail = require("./public/utils/email");
+const emailQueue = require("./email-queue-solution");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const envPath = path.resolve(__dirname, ".env");
@@ -973,21 +974,19 @@ async function logAlert(auth, body, res) {
 
     if (String(status).toLowerCase() === "acknowledged") {
         if (patient?.caretaker_email) {
-            try {
-                const emailResult = await sendCaregiverEmail({
+            const emailText = `${patient.name || "The patient"} completed "${alertTitle}".\n\nDetails: ${alertBody || "No additional details."}\nTime: ${new Date().toLocaleString("en-IN", { timeZone: TIME_ZONE })}`;
+            emailQueue.send({
+                to: patient.caretaker_email,
+                subject: `Task Completed: ${alertTitle}`,
+                text: emailText,
+                deliver: () => sendCaregiverEmail({
                     to: patient.caretaker_email,
                     subject: `Task Completed: ${alertTitle}`,
-                    text: `${patient.name || "The patient"} completed "${alertTitle}".\n\nDetails: ${alertBody || "No additional details."}\nTime: ${new Date().toLocaleString("en-IN", { timeZone: TIME_ZONE })}`
-                });
-                console.log("Completion email sent:", emailResult?.messageId || emailResult?.id || "accepted", "to", patient.caretaker_email);
-            } catch (emailError) {
-                console.error("Completion email failed:", emailError.message, "recipient:", patient.caretaker_email);
-                return res.status(502).json({
-                    error: "The reminder was logged, but the caretaker email could not be sent.",
-                    emailError: emailError.message,
-                    alert: data
-                });
-            }
+                    text: emailText
+                })
+            }).catch((emailError) => {
+                console.error("Completion email queue failed:", emailError.message, "recipient:", patient.caretaker_email);
+            });
         } else {
             console.warn("Completion email skipped: patient caretaker_email is missing.");
             return res.status(422).json({
@@ -1128,11 +1127,19 @@ cron.schedule("0 20 * * *", async () => {
         });
 
         for (const [email, tasks] of tasksByEmail) {
-            await transporter.sendMail({
+            emailQueue.send({
                 from: process.env.EMAIL_USER,
                 to: email,
                 subject: "MindBridge Alert: Incomplete daily tasks",
-                text: `The following tasks were not acknowledged today:\n\n${tasks.join("\n")}\n\nPlease check in with the patient.`
+                text: `The following tasks were not acknowledged today:\n\n${tasks.join("\n")}\n\nPlease check in with the patient.`,
+                deliver: () => transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: email,
+                    subject: "MindBridge Alert: Incomplete daily tasks",
+                    text: `The following tasks were not acknowledged today:\n\n${tasks.join("\n")}\n\nPlease check in with the patient.`
+                })
+            }).catch((emailError) => {
+                console.error("Missed-task email queue failed:", emailError.message, "recipient:", email);
             });
         }
         console.log("Missed-task warning email sent to caregiver.");
@@ -1293,27 +1300,7 @@ Do not include any other text.`;
 app.post("/api/notify-caregiver", async (req, res) => {
     const auth = await authenticate(req, res);
     if (!auth) return;
-    const logged = await logAlert(auth, req.body, res);
-    if (!logged) return;
-
-    const { data: patientData } = await auth.db
-        .from("patients")
-        .select("name")
-        .eq("user_id", auth.user.id)
-        .maybeSingle();
-    const { alertTitle } = req.body || {};
-
-    // Email delivery is optional locally; the alert remains logged if it is not configured.
-    try {
-        await sendEmail({
-            to: auth.user.email,
-            subject: `MindBridge alert: ${alertTitle}`,
-            html: `<h2>MindBridge caregiver alert</h2><p><strong>Patient:</strong> ${patientData?.name || "Patient"}</p><p><strong>Alert:</strong> ${alertTitle}</p><p>${req.body?.alertBody || "Please check in with the patient."}</p>`
-        });
-    } catch (emailError) {
-        console.error("Caregiver email failed:", emailError.message);
-        // We still return 200 because the database log was successful
-    }
+    await logAlert(auth, req.body, res);
 });
 
 /* --------------------------------------------------------------- fallback */
