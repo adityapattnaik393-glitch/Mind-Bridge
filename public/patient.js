@@ -4135,16 +4135,6 @@
     name,
     score
   ) {
-    var duration =
-      Math.max(
-        30,
-        Math.round(
-          (Date.now() -
-            sessionStartedAt) /
-            1000
-        )
-      );
-
     /*
       80% IS THE PASSING THRESHOLD.
     */
@@ -4250,22 +4240,7 @@
           }
 
           try {
-            await MB.api(
-              "/api/scores",
-              {
-                method: "POST",
-
-                body: JSON.stringify({
-                  name: name,
-                  score: score,
-                  attempts: 1,
-                  durationSeconds:
-                    duration,
-                  difficulty:
-                    selectedDifficulty
-                })
-              }
-            );
+            await window.offlineManager.saveGameScore(name, score, selectedDifficulty);
 
             await loadSummary(
               true
