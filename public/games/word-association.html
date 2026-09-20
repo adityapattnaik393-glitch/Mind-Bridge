@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Association | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .cue{
+    font-family:var(--serif);font-size:44px;font-weight:700;text-align:center;
+    background:var(--teal-100);border:2px solid var(--teal-500);
+    border-radius:18px;padding:22px 16px;margin:0 auto 10px;max-width:420px;
+    color:var(--teal-900);letter-spacing:.5px;
+  }
+  .ask{text-align:center;font-size:17px;color:var(--ink-soft);margin:0 0 18px}
+  .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;max-width:460px;margin:0 auto}
+  .opt{
+    min-height:66px;padding:14px 12px;border-radius:14px;cursor:pointer;
+    border:2px solid var(--line);background:var(--card);color:var(--ink);
+    font-family:var(--sans);font-size:20px;font-weight:600;
+  }
+  .opt:active{transform:scale(.97)}
+  .opt.correct{border-color:var(--green-500);background:var(--green-100)}
+  .opt.wrong{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){
+    .cue{font-size:34px;padding:18px 12px}
+    .opt{font-size:18px;min-height:60px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "word-association",
+    name: "Word Association",
+    difficulty: "medium",
+    maxRaw: 100,
+    howTo: "A word appears at the top. Choose the word below that goes with " +
+           "it best. There is no time limit — take as long as you like.",
+    example: "BANANA goes with fruit.",
+    voiceLine: "Choose the word that goes with the word at the top."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  /* Abstraction 1 = direct property, 2 = category, 3 = abstract concept. */
+  var abstraction = g.clamp(1 + Math.floor((g.level - 1) / 2) + g.boost, 1, 3);
+  var ROUNDS = 5;
+
+  /* Each entry carries its answer, a short reason, and plausible decoys. */
+  var BANK = {
+    1: [
+      { cue: "BANANA",  answer: "yellow", why: "A banana is yellow.",        decoys: ["square", "loud", "cold"] },
+      { cue: "SNOW",    answer: "cold",   why: "Snow is cold.",              decoys: ["sweet", "heavy", "green"] },
+      { cue: "SUGAR",   answer: "sweet",  why: "Sugar tastes sweet.",        decoys: ["sharp", "wet", "grey"] },
+      { cue: "GRASS",   answer: "green",  why: "Grass is green.",            decoys: ["purple", "noisy", "round"] },
+      { cue: "FIRE",    answer: "hot",    why: "Fire is hot.",               decoys: ["soft", "blue", "quiet"] },
+      { cue: "LEMON",   answer: "sour",   why: "A lemon tastes sour.",       decoys: ["warm", "smooth", "tall"] },
+      { cue: "FEATHER", answer: "light",  why: "A feather is very light.",   decoys: ["heavy", "sharp", "loud"] },
+      { cue: "NIGHT",   answer: "dark",   why: "The night is dark.",         decoys: ["bright", "sweet", "fast"] }
+    ],
+    2: [
+      { cue: "APPLE",   answer: "fruit",     why: "An apple is a fruit.",        decoys: ["vegetable", "tool", "animal"] },
+      { cue: "CARROT",  answer: "vegetable", why: "A carrot is a vegetable.",    decoys: ["fruit", "drink", "bird"] },
+      { cue: "SPARROW", answer: "bird",      why: "A sparrow is a bird.",        decoys: ["fish", "flower", "tool"] },
+      { cue: "HAMMER",  answer: "tool",      why: "A hammer is a tool.",         decoys: ["fruit", "bird", "drink"] },
+      { cue: "VIOLIN",  answer: "instrument",why: "A violin is an instrument.",  decoys: ["vehicle", "vegetable", "building"] },
+      { cue: "SALMON",  answer: "fish",      why: "A salmon is a fish.",         decoys: ["bird", "tool", "flower"] },
+      { cue: "TULIP",   answer: "flower",    why: "A tulip is a flower.",        decoys: ["tree", "fish", "tool"] },
+      { cue: "BUS",     answer: "vehicle",   why: "A bus is a vehicle.",         decoys: ["building", "animal", "drink"] }
+    ],
+    3: [
+      { cue: "HAPPINESS", answer: "smile",   why: "Happiness shows as a smile.",     decoys: ["frown", "storm", "lock"] },
+      { cue: "DANGER",    answer: "warning", why: "Danger calls for a warning.",     decoys: ["welcome", "reward", "holiday"] },
+      { cue: "PATIENCE",  answer: "waiting", why: "Patience means waiting calmly.",  decoys: ["rushing", "shouting", "running"] },
+      { cue: "MEMORY",    answer: "the past",why: "Memory reaches into the past.",   decoys: ["the future", "the weather", "the road"] },
+      { cue: "COURAGE",   answer: "bravery", why: "Courage is bravery.",             decoys: ["fear", "sleep", "hunger"] },
+      { cue: "SILENCE",   answer: "quiet",   why: "Silence is complete quiet.",      decoys: ["music", "crowd", "thunder"] },
+      { cue: "GROWTH",    answer: "change",  why: "Growth is a kind of change.",     decoys: ["stillness", "ending", "repeat"] },
+      { cue: "TRUST",     answer: "friend",  why: "You give trust to a friend.",     decoys: ["stranger", "rival", "storm"] }
+    ]
+  };
+
+  var queue = g.sample(BANK[abstraction], ROUNDS);
+  var round = 0, correct = 0, raw = 0, locked = false;
+
+  function build() {
+    g.stage.innerHTML = "";
+    g.stage.appendChild(Object.assign(g.el("div", "cue", ""), { id: "cue" }));
+    g.stage.appendChild(Object.assign(
+      g.el("p", "ask", "Which word goes with this?"), { id: "ask" }));
+    g.stage.appendChild(Object.assign(g.el("div", "opts"), { id: "opts" }));
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    var item = queue[round];
+    round++;
+    locked = false;
+    g.setProgress(round + " / " + ROUNDS);
+    g.flash("");
+
+    document.getElementById("cue").textContent = item.cue;
+
+    var box = document.getElementById("opts");
+    box.innerHTML = "";
+    g.shuffle([item.answer].concat(item.decoys.slice(0, 3))).forEach(function (word) {
+      var b = g.el("button", "opt", word);
+      b.type = "button";
+      b.addEventListener("click", function () { choose(b, word, item); });
+      box.appendChild(b);
+    });
+
+    g.say("Which word goes with " + item.cue + "?");
+  }
+
+  function choose(btn, word, item) {
+    if (locked) return;
+    locked = true;
+
+    if (word === item.answer) {
+      correct++;
+      raw += 20;                         /* spec: 20 per correct match */
+      g.addPoints(20);
+      btn.classList.add("correct");
+      g.flash("Great word knowledge — " + item.why, "ok");
+      g.say("Yes. " + item.why);
+    } else {
+      btn.classList.add("wrong");
+      Array.prototype.forEach.call(document.getElementById("opts").children,
+        function (b) { if (b.textContent === item.answer) b.classList.add("correct"); });
+      g.flash(item.why, "no");
+      g.say(item.why);
+    }
+
+    setTimeout(nextRound, 2000);
+  }
+
+  function endGame() {
+    var accuracy = Math.round((correct / ROUNDS) * 100);
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        words_correct: correct,
+        vocabulary_activated: ROUNDS,
+        abstraction_level: abstraction
+      },
+      tooEasy: accuracy === 100,
+      tooHard: accuracy < 60,
+      verdict: accuracy === 100 ? "Excellent vocabulary!" :
+               accuracy >= 80 ? "Well connected!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

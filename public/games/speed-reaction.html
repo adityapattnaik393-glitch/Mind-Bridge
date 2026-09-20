@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speed Reaction | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .legend{
+    display:flex;align-items:center;gap:12px;justify-content:center;
+    background:var(--surface-2);border:1px solid var(--line);
+    border-radius:14px;padding:10px 16px;margin:0 auto 14px;width:fit-content;
+  }
+  .legend span{font-size:16px;font-weight:600;color:var(--ink-soft)}
+  .arena{
+    position:relative;width:100%;height:320px;cursor:pointer;
+    border:2px solid var(--line);border-radius:18px;background:var(--card);
+    display:flex;align-items:center;justify-content:center;
+    touch-action:manipulation;user-select:none;
+  }
+  .arena:active{background:var(--surface-2)}
+  .slot{display:flex;align-items:center;justify-content:center}
+  .slot.edge{position:absolute;left:0;top:0}
+  @media(max-width:520px){.arena{height:260px}}
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script src="speed-core.js"></script>
+<script>MBSpeed.start({ variant: "medium" });</script>
+</body>
+</html>

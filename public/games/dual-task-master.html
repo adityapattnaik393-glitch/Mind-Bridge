@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dual Task Master | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .spoken{
+    display:flex;align-items:center;gap:14px;justify-content:center;
+    background:var(--purple-100);border:2px solid var(--purple-500);
+    border-radius:16px;padding:14px 18px;margin:0 auto 16px;max-width:480px;
+  }
+  .spoken .ear{font-size:36px}
+  .spoken .txt{font-size:19px;font-weight:600;color:var(--purple-500);
+               text-align:left;line-height:1.35}
+  .tally{
+    display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0 0 14px;
+  }
+  .tally div{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
+    padding:8px 14px;font-size:16px;font-weight:600;color:var(--ink-soft);
+  }
+  .tally div b{color:var(--teal-700)}
+  .shapes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+          gap:12px;max-width:440px;margin:0 auto}
+  .sh{
+    height:100px;border-radius:14px;border:2px solid var(--line);cursor:pointer;
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+  }
+  .sh:active{transform:scale(.95)}
+  .sh.correct{border-color:var(--green-500);background:var(--green-100)}
+  .sh.wrong{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){.sh{height:80px}.spoken .txt{font-size:17px}}
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "dual-task-master",
+    name: "Dual Task Master",
+    difficulty: "hard",
+    maxRaw: 100,
+    howTo: "Two things at once. A voice reads out a word — keep a count of " +
+           "how many times you hear a FOOD word. At the same time, tap the " +
+           "shape shown on the card. At the end you will be asked for your count.",
+    example: "Hear 'bread' — that is food, so add one to your count. Then tap the shape.",
+    voiceLine: "Listen and count the food words while you tap the shapes."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var TRIALS   = g.clamp(10 + (g.level - 1) + g.boost * 2, 8, 16);
+  var paceMs   = g.clamp(4200 - (g.level - 1) * 300 - g.boost * 400, 2600, 4200);
+
+  var FOOD  = ["bread", "apple", "cheese", "rice", "soup", "orange", "butter", "egg", "honey", "carrot"];
+  var OTHER = ["window", "pencil", "river", "jacket", "mirror", "candle", "ladder", "curtain", "hammer", "pillow"];
+
+  var SHAPES = [
+    { name: "circle",   svg: '<circle cx="34" cy="34" r="30" />' },
+    { name: "square",   svg: '<rect x="4" y="4" width="60" height="60" rx="8" />' },
+    { name: "triangle", svg: '<polygon points="34,4 64,62 4,62" />' },
+    { name: "diamond",  svg: '<polygon points="34,3 65,34 34,65 3,34" />' },
+    { name: "star",     svg: '<polygon points="34,4 42,26 66,26 46,40 54,63 34,49 14,63 22,40 2,26 26,26" />' },
+    { name: "heart",    svg: '<path d="M34 62C10 44 6 30 6 22a14 14 0 0 1 28-4 14 14 0 0 1 28 4c0 8-4 22-28 40z" />' }
+  ];
+
+  var trial = 0, tapHits = 0, tapMisses = 0, foodCount = 0, raw = 0;
+  var target = null, answered = true, loopTimer = null;
+
+  function shapeSvg(shape, color) {
+    return '<svg width="68" height="68" viewBox="0 0 68 68" fill="' + color + '">' +
+           shape.svg + '</svg>';
+  }
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    var sp = g.el("div", "spoken");
+    sp.innerHTML = '<span class="ear">👂</span><span class="txt" id="word">Get ready…</span>';
+    g.stage.appendChild(sp);
+
+    var tally = g.el("div", "tally");
+    tally.innerHTML = '<div id="tShapes">Shapes tapped: <b>0</b></div>' +
+                      '<div id="tTrial">Word <b>0</b> of ' + TRIALS + '</div>';
+    g.stage.appendChild(tally);
+
+    g.stage.appendChild(Object.assign(
+      g.el("p", "mb-prompt", "Tap this shape"), { id: "prompt" }));
+
+    var grid = g.el("div", "shapes");
+    grid.id = "shapes";
+    g.stage.appendChild(grid);
+
+    g.stage.appendChild(Object.assign(
+      g.el("p", "mb-sub", "Keep counting the food words in your head"), { id: "sub" }));
+  }
+
+  function nextTrial() {
+    if (!answered) tapMisses++;      /* the shape was never tapped in time */
+
+    if (trial >= TRIALS) return askCount();
+    trial++;
+    answered = false;
+    g.setProgress(trial + " / " + TRIALS);
+
+    /* --- auditory stream --- */
+    var isFood = Math.random() < 0.45;
+    var word = isFood ? g.pick(FOOD) : g.pick(OTHER);
+    if (isFood) foodCount++;
+
+    document.getElementById("word").textContent = 'You hear: "' + word + '"';
+    document.getElementById("tTrial").innerHTML = "Word <b>" + trial + "</b> of " + TRIALS;
+
+    if (window.speechSynthesis && g.voice()) {
+      try {
+        var u = new SpeechSynthesisUtterance(word);
+        u.rate = 0.95;
+        window.speechSynthesis.speak(u);
+      } catch (e) { /* caption above still carries it */ }
+    }
+    g.tone(isFood ? 640 : 480, 110);
+
+    /* --- visual task --- */
+    var set = g.sample(SHAPES, 6);
+    target = g.pick(set);
+    document.getElementById("prompt").textContent = "Tap the " + target.name;
+
+    var grid = document.getElementById("shapes");
+    grid.innerHTML = "";
+    set.forEach(function (shape) {
+      var b = g.el("button", "sh");
+      b.type = "button";
+      b.innerHTML = shapeSvg(shape, "#155249");
+      b.setAttribute("aria-label", shape.name);
+      b.addEventListener("click", function () { tap(b, shape); });
+      grid.appendChild(b);
+    });
+
+    g.countdown(paceMs, function () { /* handled by the pacing loop */ });
+  }
+
+  function tap(btn, shape) {
+    if (answered) return;
+    answered = true;
+
+    if (shape.name === target.name) {
+      tapHits++;
+      raw += Math.round(60 / TRIALS);    /* shape task is worth 60 of 100 */
+      g.addPoints(Math.round(60 / TRIALS));
+      btn.classList.add("correct");
+      g.flash("Good — keep counting", "ok");
+    } else {
+      tapMisses++;
+      btn.classList.add("wrong");
+      g.flash("That was the " + shape.name + ", not the " + target.name, "no");
+    }
+
+    document.getElementById("tShapes").innerHTML =
+      "Shapes tapped: <b>" + tapHits + "</b>";
+  }
+
+  /* -------------------------------------------------------- recall phase */
+
+  function askCount() {
+    clearInterval(loopTimer);
+    g.cancelCountdown();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+    g.stage.innerHTML = "";
+    g.setProgress("Final question");
+
+    g.stage.appendChild(g.el("p", "mb-prompt", "How many food words did you hear?"));
+    g.stage.appendChild(g.el("p", "mb-sub",
+      "Choose your count. There were " + TRIALS + " words in total."));
+    g.say("How many food words did you hear?");
+
+    /* Offer the true answer plus near neighbours. */
+    var opts = [foodCount];
+    var spread = [-2, -1, 1, 2];
+    g.shuffle(spread).forEach(function (d) {
+      var v = foodCount + d;
+      if (opts.length < 4 && v >= 0 && v <= TRIALS && opts.indexOf(v) === -1) opts.push(v);
+    });
+    while (opts.length < 4) {
+      var v2 = Math.floor(Math.random() * (TRIALS + 1));
+      if (opts.indexOf(v2) === -1) opts.push(v2);
+    }
+
+    var row = g.el("div", "mb-row");
+    g.shuffle(opts).forEach(function (n) {
+      var b = g.el("button", "mb-tile", String(n));
+      b.type = "button";
+      b.style.width = "84px";
+      b.style.height = "72px";
+      b.style.fontSize = "28px";
+      b.addEventListener("click", function () { settleCount(b, n, row); });
+      row.appendChild(b);
+    });
+    g.stage.appendChild(row);
+  }
+
+  var countRight = false, countPoints = 0;
+
+  function settleCount(btn, n, row) {
+    Array.prototype.forEach.call(row.children, function (b) { b.disabled = true; });
+
+    countRight = n === foodCount;
+    if (countRight) {
+      countPoints = 40;                  /* listening task is worth 40 of 100 */
+      g.addPoints(40);
+      btn.classList.add("correct");
+      g.flash("Exactly right — " + foodCount + " food words", "ok");
+    } else {
+      btn.classList.add("wrong");
+      Array.prototype.forEach.call(row.children, function (b) {
+        if (b.textContent === String(foodCount)) b.classList.add("correct");
+      });
+      /* Partial credit for being close, since divided attention is the point. */
+      if (Math.abs(n - foodCount) === 1) { countPoints = 20; g.addPoints(20); }
+      g.flash("There were " + foodCount + " food words", "no");
+    }
+
+    setTimeout(endGame, 1800);
+  }
+
+  function endGame() {
+    var tapAccuracy = Math.round((tapHits / TRIALS) * 100);
+    var accuracy = Math.round(tapAccuracy * 0.6 + (countRight ? 40 : 0));
+
+    /* Rebuild the total exactly: 60 points for the shape task, 40 for the
+       count (20 if the count was out by one). Running totals are rounded
+       per trial and would leave a flawless run short of 100. */
+    raw = Math.round(tapAccuracy * 0.6) + countPoints;
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        shape_accuracy: tapAccuracy,
+        shapes_tapped: tapHits,
+        shapes_missed: tapMisses,
+        food_words_actual: foodCount,
+        count_correct: countRight,
+        trials: TRIALS
+      },
+      tooEasy: tapAccuracy >= 90 && countRight,
+      tooHard: tapAccuracy < 60 || (!countRight && tapAccuracy < 75),
+      verdict: countRight && tapAccuracy >= 90 ? "Both tasks mastered!" :
+               accuracy >= 80 ? "Strong divided attention!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextTrial();
+    loopTimer = setInterval(nextTrial, paceMs);
+  });
+})();
+</script>
+</body>
+</html>

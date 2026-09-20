@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Grid | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .board{display:grid;gap:12px;justify-content:center;margin:0 auto;max-width:440px}
+  .card{
+    width:80px;height:80px;border-radius:14px;cursor:pointer;border:none;
+    background:transparent;padding:0;perspective:700px;
+  }
+  .face{
+    width:100%;height:100%;border-radius:14px;display:flex;
+    align-items:center;justify-content:center;font-size:36px;
+    border:2px solid var(--line);background:var(--teal-700);color:#fff;
+    transition:transform .25s ease,background .2s ease,border-color .2s ease;
+  }
+  .card.up .face{background:var(--card);border-color:var(--teal-500);transform:rotateY(0)}
+  .card:not(.up) .face{color:rgba(255,255,255,.9)}
+  .card.matched .face{background:var(--green-100);border-color:var(--green-500)}
+  .card.matched{cursor:default}
+  .card:active .face{transform:scale(.95)}
+  .label{font-size:13px;color:var(--ink-soft);text-align:center;margin-top:2px}
+  @media(max-width:420px){
+    .card{width:66px;height:66px}
+    .face{font-size:30px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "memory-grid",
+    name: "Memory Grid",
+    difficulty: "easy",
+    maxRaw: 100,   /* the +20 perfect bonus is headroom above a full score */
+    howTo: "Tap a card to turn it over, then tap another. If the two pictures " +
+           "match, they stay face up. Find every pair.",
+    example: "Two apples together is a pair.",
+    voiceLine: "Find all the matching pairs."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  /* Grid grows with level: 4 pairs -> 8 pairs across the five levels. */
+  var pairs = g.clamp(4 + Math.floor((g.level - 1) * 0.9) + g.boost, 3, 8);
+
+  var DECK = [
+    { icon: "🍎", name: "apple" },  { icon: "🍌", name: "banana" },
+    { icon: "🐕", name: "dog" },    { icon: "🐈", name: "cat" },
+    { icon: "🚗", name: "car" },    { icon: "🌳", name: "tree" },
+    { icon: "🌻", name: "flower" }, { icon: "🏠", name: "house" },
+    { icon: "📖", name: "book" },   { icon: "☎️", name: "phone" },
+    { icon: "☕", name: "cup" },    { icon: "👟", name: "shoe" },
+    { icon: "🔑", name: "key" },    { icon: "☀️", name: "sun" }
+  ];
+
+  var chosen = g.sample(DECK, pairs);
+  var deck = g.shuffle(chosen.concat(chosen).map(function (c, i) {
+    return { icon: c.icon, name: c.name, id: i };
+  }));
+
+  var minFlips = pairs * 2;            /* a perfect game flips each card once */
+  var flips = 0, found = 0, firstTryHits = 0;
+  var openCard = null, busy = true, previewing = true;
+  var seen = {};                        /* icon -> has been shown before */
+
+  var cardEls = [];
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    var prompt = g.el("p", "mb-prompt", "Find the matching pairs");
+    g.stage.appendChild(prompt);
+
+    var sub = g.el("p", "mb-sub", "");
+    sub.id = "sub";
+    g.stage.appendChild(sub);
+
+    var cols = pairs <= 4 ? 4 : (pairs <= 6 ? 4 : 4);
+    var board = g.el("div", "board");
+    board.style.gridTemplateColumns = "repeat(" + cols + ", auto)";
+
+    cardEls = deck.map(function (card, i) {
+      var b = g.el("button", "card");
+      b.type = "button";
+      b.setAttribute("aria-label", card.name);
+      b.classList.add("up");
+      var face = g.el("div", "face", card.icon);
+      b.appendChild(face);
+      b.addEventListener("click", function () { flip(i, b, face, card); });
+      board.appendChild(b);
+      return b;
+    });
+
+    g.stage.appendChild(board);
+    document.getElementById("sub").textContent =
+      "Remember the cards — they will hide in 2 seconds";
+    g.say("Remember where the cards are. They will hide in two seconds.");
+
+    setTimeout(function () {
+      cardEls.forEach(function (btn) {
+        btn.classList.remove("up");
+        btn.querySelector(".face").textContent = "?";
+        btn.setAttribute("aria-label", "Hidden card");
+      });
+      previewing = false;
+      busy = false;
+      updateSub();
+    }, 2000);
+  }
+
+  function updateSub() {
+    document.getElementById("sub").textContent =
+      found + "/" + pairs + " pairs found   ·   Moves: " + flips;
+  }
+
+  function flip(i, btn, face, card) {
+    if (previewing || busy || btn.classList.contains("up") || btn.classList.contains("matched")) return;
+
+    flips++;
+    btn.classList.add("up");
+    face.textContent = card.icon;
+    btn.setAttribute("aria-label", card.name);
+    g.tone(520, 110);
+    g.say(card.name);
+    updateSub();
+
+    if (!openCard) {
+      /* First card of the move. Track whether the player has seen its twin. */
+      openCard = { i: i, btn: btn, face: face, card: card };
+      return;
+    }
+
+    busy = true;
+    var a = openCard, b = { i: i, btn: btn, face: face, card: card };
+    openCard = null;
+
+    if (a.card.icon === b.card.icon) {
+      /* Matched on a card the player had already uncovered once = real recall. */
+      if (seen[a.card.icon]) firstTryHits++;
+      seen[a.card.icon] = true;
+
+      a.btn.classList.add("matched");
+      b.btn.classList.add("matched");
+      found++;
+      g.addPoints(10);
+      g.flash("Match! " + a.card.name, "ok");
+      updateSub();
+      busy = false;
+
+      if (found === pairs) setTimeout(endGame, 800);
+    } else {
+      seen[a.card.icon] = true;
+      seen[b.card.icon] = true;
+      g.flash("Not a pair — remember where they are", "no");
+
+      setTimeout(function () {
+        a.btn.classList.remove("up"); a.face.textContent = "?";
+        a.btn.setAttribute("aria-label", "Hidden card");
+        b.btn.classList.remove("up"); b.face.textContent = "?";
+        b.btn.setAttribute("aria-label", "Hidden card");
+        busy = false;
+        g.flash("");
+      }, 1000);
+    }
+  }
+
+  function endGame() {
+    /* Spec: 100 - (flips - minimum_flips) * 2, +20 for a flawless game. */
+    var extra = Math.max(0, flips - minFlips);
+    var raw = Math.max(0, 100 - extra * 2);
+    var perfect = extra === 0;
+    if (perfect) raw += 20;
+
+    var accuracy = Math.round((minFlips / Math.max(minFlips, flips)) * 100);
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        total_flips: flips,
+        pairs_found: found,
+        grid_pairs: pairs,
+        perfect_game: perfect
+      },
+      tooEasy: accuracy > 90,
+      tooHard: flips > minFlips * 2.5,
+      verdict: perfect ? "Excellent memory!" :
+               accuracy >= 80 ? "Well matched!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    g.setProgress(pairs + " pairs");
+    build();
+  });
+})();
+</script>
+</body>
+</html>

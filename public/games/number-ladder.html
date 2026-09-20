@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Ladder | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .field{
+    position:relative;width:100%;height:420px;
+    background:var(--surface-2);border:1px solid var(--line);
+    border-radius:16px;overflow:hidden;
+  }
+  .num{
+    position:absolute;border-radius:14px;cursor:pointer;
+    border:2px solid var(--line);background:var(--card);color:var(--ink);
+    font-family:var(--sans);font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .1s ease,background .2s ease,border-color .2s ease;
+  }
+  .num:active{transform:scale(.94)}
+  .num.done{background:var(--green-100);border-color:var(--green-500);
+            color:var(--green-700);cursor:default}
+  .num.nope{background:var(--red-100);border-color:var(--red-600)}
+  .next-up{
+    text-align:center;font-family:var(--serif);font-size:22px;
+    margin:0 0 12px;color:var(--teal-700);
+  }
+  @media(max-width:520px){.field{height:360px}}
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "number-ladder",
+    name: "Number Ladder",
+    difficulty: "easy",
+    maxRaw: 100,   /* the +20 speed bonus is headroom above a full score */
+    howTo: "Numbers are scattered on the board. Tap them in order, starting " +
+           "with 1, then 2, then 3, and keep going to the end.",
+    example: "Tap 1 first. Then look for 2.",
+    voiceLine: "Tap the numbers in order, starting with 1."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var total  = g.clamp(10 + (g.level - 1) * 2 + g.boost * 3, 8, 20);
+  var size   = total <= 12 ? 64 : (total <= 16 ? 56 : 50);   /* never under 50px */
+  var font   = total <= 12 ? 30 : (total <= 16 ? 25 : 21);
+  var bonusUnder = total <= 12 ? 60 : (total <= 16 ? 90 : 120);
+
+  var expect = 1, wrongTaps = 0;
+  var nextLine, field;
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    nextLine = g.el("p", "next-up", "");
+    g.stage.appendChild(nextLine);
+
+    field = g.el("div", "field");
+    field.id = "field";
+    g.stage.appendChild(field);
+
+    layout();
+    updateNext();
+  }
+
+  /* Scatter numbers without overlapping, using a coarse grid with jitter. */
+  function layout() {
+    var w = field.clientWidth || 640;
+    var h = field.clientHeight || 420;
+    var cols = Math.max(3, Math.floor(Math.sqrt(total * (w / h))));
+    var rows = Math.ceil(total / cols);
+    var cellW = w / cols, cellH = h / rows;
+
+    var cells = [];
+    for (var r = 0; r < rows; r++)
+      for (var c = 0; c < cols; c++) cells.push({ r: r, c: c });
+    cells = g.shuffle(cells).slice(0, total);
+
+    var order = g.shuffle(
+      Array.from({ length: total }, function (_, i) { return i + 1; }));
+
+    order.forEach(function (value, i) {
+      var cell = cells[i];
+      var jitterX = (Math.random() - 0.5) * Math.max(0, cellW - size - 8);
+      var jitterY = (Math.random() - 0.5) * Math.max(0, cellH - size - 8);
+      var x = cell.c * cellW + (cellW - size) / 2 + jitterX;
+      var y = cell.r * cellH + (cellH - size) / 2 + jitterY;
+
+      var b = g.el("button", "num", String(value));
+      b.type = "button";
+      b.style.width = size + "px";
+      b.style.height = size + "px";
+      b.style.fontSize = font + "px";
+      b.style.left = g.clamp(x, 4, w - size - 4) + "px";
+      b.style.top = g.clamp(y, 4, h - size - 4) + "px";
+      b.dataset.value = String(value);
+      b.addEventListener("click", function () { tap(b, value); });
+      field.appendChild(b);
+    });
+  }
+
+  function updateNext() {
+    nextLine.textContent = expect > total
+      ? "Finished!"
+      : "Next number: " + expect + "   ·   " + (expect - 1) + " / " + total;
+    g.setProgress((expect - 1) + " / " + total);
+  }
+
+  function tap(btn, value) {
+    if (btn.classList.contains("done")) return;
+
+    if (value === expect) {
+      btn.classList.add("done");
+      g.addPoints(Math.round(100 / total));
+      g.tone(440 + value * 18, 120);
+      expect++;
+      updateNext();
+      g.flash("");
+
+      if (expect > total) setTimeout(endGame, 500);
+    } else {
+      wrongTaps++;
+      btn.classList.add("nope");
+      g.flash("Not yet — look for " + expect, "no");
+      g.say("Not yet. Find " + expect);
+      setTimeout(function () { btn.classList.remove("nope"); }, 600);
+    }
+  }
+
+  function endGame() {
+    var seconds = g.elapsed();
+    /* Every number must be tapped to finish, so without a penalty the game
+       could never score below 100 and the 80% gate would be meaningless.
+       Wrong taps cost 3 points each. */
+    var raw = Math.max(0, 100 - wrongTaps * 3);
+    if (seconds < bonusUnder) raw += 20; /* spec: +20 speed bonus */
+
+    /* Accuracy reflects how clean the run was, not whether it finished. */
+    var accuracy = Math.round((total / (total + wrongTaps)) * 100);
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        completion_time: seconds,
+        numbers_total: total,
+        wrong_taps: wrongTaps
+      },
+      tooEasy: seconds < bonusUnder * 0.7 && wrongTaps <= 1,
+      tooHard: seconds > bonusUnder * 2 || wrongTaps > total,
+      verdict: wrongTaps === 0 ? "Great sequencing!" : "Nicely finished!"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    /* Re-layout if the device is rotated mid-game. */
+    window.addEventListener("resize", function () {
+      var keep = expect;
+      field.innerHTML = "";
+      layout();
+      Array.prototype.forEach.call(field.children, function (b) {
+        if (Number(b.dataset.value) < keep) b.classList.add("done");
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

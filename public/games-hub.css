@@ -1,0 +1,99 @@
+/* ============================================================================
+   MindBridge — Games Hub styling.
+   Lives inside the existing #modalContent, so it inherits theme.css tokens.
+   ==========================================================================*/
+
+.mbh { font-family: var(--sans); }
+
+/* ------------------------------------------------------------------- head */
+.mbh-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.mbh-head h3 { font-family: var(--serif); font-size: 24px; margin: 0 0 4px; }
+.mbh-sub { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+.mbh-tallies { display: flex; gap: 8px; flex-wrap: wrap; }
+.mbh-tally {
+  font-size: 14px; font-weight: 600; padding: 7px 13px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-soft);
+  white-space: nowrap;
+}
+.mbh-tally.coins  { background: var(--amber-100); border-color: #f0dcb5; color: var(--amber-600); }
+.mbh-tally.streak { background: var(--red-100);   border-color: #f2cfc9; color: var(--red-600); }
+.mbh-tally.plays  { background: var(--teal-100);  border-color: #cfe4dd; color: var(--teal-700); }
+
+.mbh-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.mbh-badges span {
+  font-size: 13px; font-weight: 600; padding: 6px 11px; border-radius: 999px;
+  background: var(--green-100); border: 1px solid #cfe9d9; color: var(--green-700);
+}
+
+/* ------------------------------------------------------------------ tiers */
+.mbh-tier { margin-bottom: 22px; }
+.mbh-tier-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.mbh-tier-head h4 { font-family: var(--serif); font-size: 19px; margin: 0; }
+.mbh-tier-head span { font-size: 14px; color: var(--ink-soft); }
+.mbh-tier.locked .mbh-tier-head h4 { color: var(--ink-faint); }
+
+.mbh-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+/* ------------------------------------------------------------------ cards */
+.mbh-card {
+  display: flex; gap: 12px; text-align: left; align-items: flex-start;
+  padding: 14px; border-radius: 16px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card);
+  font-family: var(--sans); color: var(--ink); width: 100%;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .08s ease;
+}
+.mbh-card:hover:not(.is-locked) {
+  border-color: var(--teal-500); box-shadow: var(--shadow);
+}
+.mbh-card:active:not(.is-locked) { transform: scale(.99); }
+.mbh-card:focus-visible { outline: 3px solid var(--amber-500); outline-offset: 2px; }
+.mbh-card.is-locked { opacity: .5; cursor: not-allowed; background: var(--surface-2); }
+.mbh-card.is-complete { border-color: var(--green-500); background: var(--green-100); cursor: default; }
+
+.mbh-icon { font-size: 34px; line-height: 1.1; flex: 0 0 auto; }
+.mbh-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.mbh-body strong { font-family: var(--serif); font-size: 17px; font-weight: 600; }
+.mbh-blurb { font-size: 14.5px; color: var(--ink-soft); }
+.mbh-meta  { font-size: 12.5px; color: var(--ink-faint); }
+
+.mbh-progress {
+  display: block; height: 7px; border-radius: 999px; margin-top: 6px;
+  background: var(--surface-3, #EFEBDF); overflow: hidden;
+}
+.mbh-progress > i { display: block; height: 100%; background: var(--teal-500); }
+.mbh-level { font-size: 13px; font-weight: 600; color: var(--teal-700); margin-top: 2px; }
+.mbh-card.is-complete .mbh-level { color: var(--green-700); }
+
+/* --------------------------------------------------------------- play view */
+.mbh-playbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.mbh-playbar span { font-family: var(--serif); font-size: 17px; font-weight: 600; }
+.mbh-back {
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  min-height: 44px; padding: 10px 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+}
+.mbh-back:hover { background: var(--surface-2); }
+
+.mbh-frame {
+  width: 100%; height: 640px; border: 1px solid var(--line);
+  border-radius: 16px; background: var(--bg); display: block;
+}
+
+@media (max-width: 640px) {
+  .mbh-grid { grid-template-columns: 1fr; }
+  .mbh-frame { height: 78vh; min-height: 520px; }
+  .mbh-head h3 { font-size: 21px; }
+}

@@ -1,0 +1,162 @@
+/* ============================================================================
+   MindBridge Games — shared shell styling.
+   Uses the same tokens as theme.css so games feel native to the dashboard.
+   Accessibility floor: 18px body text, 50x50px touch targets, high contrast.
+   ==========================================================================*/
+
+:root{
+  --bg:#F4F2EC; --bg-warm:#EEE9DE; --card:#FFFFFF;
+  --ink:#1D2521; --ink-soft:#5B6560; --ink-faint:#9AA39D;
+  --teal-900:#0E2E2C; --teal-800:#12403C; --teal-700:#155249;
+  --teal-500:#1E7A6C; --teal-100:#E4F0EC;
+  --amber-500:#DE9A34; --amber-600:#C97F1E; --amber-100:#FBEED9;
+  --green-500:#3E9B6E; --green-700:#1F6B47; --green-100:#E4F3EA;
+  --red-600:#B3453A; --red-100:#FBE4E1;
+  --blue-500:#2F6FB0; --blue-100:#E2ECF7;
+  --purple-500:#6B4E9B; --purple-100:#EDE6F7;
+  --line:#E7E3D9; --surface-2:#F6F4EE;
+  --radius:18px;
+  --shadow:0 1px 2px rgba(20,30,26,.04),0 6px 20px rgba(20,30,26,.05);
+  --serif:'Fraunces','Iowan Old Style',ui-serif,Georgia,serif;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:18px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:15px;
+  min-height:100vh;
+}
+
+.mb-shell{max-width:760px;margin:0 auto}
+
+/* ------------------------------------------------------------------ header */
+.mb-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:10px 12px;margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.mb-head .mb-title{
+  font-family:var(--serif);font-size:19px;font-weight:600;
+  margin:0;flex:1 1 140px;min-width:0;
+}
+.mb-chip{
+  font-size:15px;font-weight:600;padding:7px 12px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);
+  white-space:nowrap;
+}
+.mb-chip.score{background:var(--teal-100);border-color:#cfe4dd;color:var(--teal-700)}
+.mb-chip.coins{background:var(--amber-100);border-color:#f0dcb5;color:var(--amber-600)}
+.mb-chip.timer{font-variant-numeric:tabular-nums}
+
+.mb-voice{
+  width:50px;height:50px;flex:0 0 50px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--line);background:var(--card);
+  font-size:22px;display:flex;align-items:center;justify-content:center;
+}
+.mb-voice[aria-pressed="true"]{background:var(--teal-100);border-color:var(--teal-500)}
+
+/* time bar (visual, not text-only) */
+.mb-bar{height:12px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--line);overflow:hidden;margin-bottom:14px}
+.mb-bar > i{display:block;height:100%;background:var(--teal-500);
+  width:100%;transition:width .12s linear}
+.mb-bar.warn > i{background:var(--amber-500)}
+.mb-bar.danger > i{background:var(--red-600)}
+
+/* ------------------------------------------------------------------- panel */
+.mb-panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow);
+}
+.mb-panel h2{font-family:var(--serif);font-size:24px;margin:0 0 8px}
+.mb-panel p{margin:0 0 14px;color:var(--ink-soft)}
+
+.mb-prompt{
+  font-family:var(--serif);font-size:22px;font-weight:600;
+  text-align:center;margin:0 0 16px;min-height:32px;
+}
+.mb-sub{text-align:center;color:var(--ink-soft);font-size:16px;margin:0 0 16px}
+
+/* ------------------------------------------------------------------ button */
+.mb-btn{
+  font-family:var(--sans);font-size:18px;font-weight:600;
+  min-height:50px;padding:13px 24px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--teal-700);background:var(--teal-700);color:#fff;
+  transition:transform .08s ease,background .15s ease;
+}
+.mb-btn:hover{background:var(--teal-800)}
+.mb-btn:active{transform:scale(.97)}
+.mb-btn.ghost{background:var(--card);color:var(--ink);border-color:var(--line)}
+.mb-btn.ghost:hover{background:var(--surface-2)}
+.mb-btn:focus-visible,.mb-voice:focus-visible,.mb-tile:focus-visible{
+  outline:3px solid var(--amber-500);outline-offset:2px}
+.mb-btn[disabled]{opacity:.5;cursor:not-allowed}
+
+.mb-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+
+/* -------------------------------------------------------------------- tile */
+.mb-tile{
+  min-width:50px;min-height:50px;border-radius:14px;cursor:pointer;
+  border:2px solid var(--line);background:var(--card);color:var(--ink);
+  font-family:var(--sans);font-size:20px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .1s ease,border-color .15s ease,background .15s ease;
+}
+.mb-tile:active{transform:scale(.96)}
+.mb-tile.correct{border-color:var(--green-500);background:var(--green-100)}
+.mb-tile.wrong{border-color:var(--red-600);background:var(--red-100)}
+.mb-tile.chosen{border-color:var(--teal-500);background:var(--teal-100)}
+.mb-tile.dim{opacity:.35;pointer-events:none}
+
+.mb-grid{display:grid;gap:12px;justify-content:center}
+.mb-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+
+/* ------------------------------------------------------------------- toast */
+.mb-toast{
+  text-align:center;font-weight:600;font-size:18px;
+  min-height:28px;margin:14px 0 0;
+}
+.mb-toast.ok{color:var(--green-700)}
+.mb-toast.no{color:var(--red-600)}
+.mb-toast.info{color:var(--ink-soft)}
+
+/* ------------------------------------------------------------------ result */
+.mb-result{text-align:center;padding:10px 0}
+.mb-result .big{
+  font-family:var(--serif);font-size:56px;font-weight:700;line-height:1;
+  color:var(--teal-700);margin:0 0 6px;
+}
+.mb-result .verdict{font-family:var(--serif);font-size:26px;margin:0 0 10px}
+.mb-result .note{color:var(--ink-soft);margin:0 0 4px;font-size:17px}
+.mb-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;margin:18px 0 4px;
+}
+.mb-stat{background:var(--surface-2);border:1px solid var(--line);
+  border-radius:12px;padding:12px}
+.mb-stat b{display:block;font-family:var(--serif);font-size:22px}
+.mb-stat span{font-size:14px;color:var(--ink-soft)}
+
+/* --------------------------------------------------------------- utilities */
+.mb-hide{display:none !important}
+.mb-center{text-align:center}
+.mb-flash{animation:mbFlash .38s ease}
+@keyframes mbFlash{0%{transform:scale(1)}45%{transform:scale(1.12)}100%{transform:scale(1)}}
+.mb-pop{animation:mbPop .3s ease}
+@keyframes mbPop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
+
+@media (max-width:520px){
+  body{padding:12px;font-size:17px}
+  .mb-panel{padding:15px}
+  .mb-prompt{font-size:19px}
+  .mb-result .big{font-size:46px}
+}

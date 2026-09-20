@@ -245,12 +245,22 @@
 
   function renderSessionTable(recent) {
     var body = document.getElementById("sessionTableBody");
-    if (!recent.length) {
+    var newGameNames = [
+      "Sequence Recall", "Memory Grid", "Slow Motion Spotter", "Number Ladder", "Sound Story",
+      "Pattern Master", "Location Link", "Speed Reaction", "Story Sequence", "Word Association",
+      "Dual Task Master", "Advanced Location Link", "Advanced Speed Reaction", "Logic Puzzle",
+      "Mixed Challenge"
+    ];
+    var currentGames = recent.filter(function (row) {
+      return newGameNames.indexOf(row.game_type) !== -1;
+    });
+
+    if (!currentGames.length) {
       body.innerHTML = '<tr><td colspan="5">No sessions saved yet. Start one from the patient dashboard.</td></tr>';
       return;
     }
 
-    body.innerHTML = recent.map(function (row) {
+    body.innerHTML = currentGames.map(function (row) {
       var meta = MB.gameMeta(row.game_type);
       var when = new Date(row.created_at).toLocaleString("en-GB", {
         day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"

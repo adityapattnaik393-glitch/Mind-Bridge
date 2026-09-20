@@ -598,14 +598,6 @@
       })
       .join("");
 
-    Array.prototype.forEach.call(
-      list.querySelectorAll(".activity-row"),
-      function (row) {
-        row.addEventListener("click", function () {
-          launchGame(row.dataset.game);
-        });
-      }
-    );
   }
 
   var ALERT_ICONS = {

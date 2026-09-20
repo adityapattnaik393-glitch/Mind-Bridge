@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story Sequence | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .slots{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0 0 18px}
+  .slot{
+    width:120px;min-height:130px;border-radius:14px;padding:8px;
+    border:2px dashed var(--line);background:var(--surface-2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  }
+  .slot .pos{font-size:13px;font-weight:700;color:var(--ink-faint)}
+  .slot.filled{border-style:solid;border-color:var(--teal-500);background:var(--teal-100)}
+  .slot .ic{font-size:44px;line-height:1}
+  .slot .cap{font-size:13px;text-align:center;color:var(--ink-soft);line-height:1.25}
+  .pool{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .pcard{
+    width:120px;min-height:130px;border-radius:14px;padding:10px 8px;cursor:pointer;
+    border:2px solid var(--line);background:var(--card);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    font-family:var(--sans);color:var(--ink);
+  }
+  .pcard:active{transform:scale(.96)}
+  .pcard .ic{font-size:44px;line-height:1}
+  .pcard .cap{font-size:13.5px;text-align:center;line-height:1.25}
+  .pcard.used{opacity:.3;pointer-events:none}
+  .slot.ok{border-color:var(--green-500);background:var(--green-100)}
+  .slot.bad{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){
+    .slot,.pcard{width:calc(50% - 6px);min-height:110px}
+    .slot .ic,.pcard .ic{font-size:36px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "story-sequence",
+    name: "Story Sequence",
+    difficulty: "medium",
+    maxRaw: 100,
+    howTo: "The pictures below tell a short story, but they are jumbled. Tap " +
+           "them in the order the story happens — what comes first, then next.",
+    example: "Wake up, get dressed, eat breakfast, leave the house.",
+    voiceLine: "Put these pictures in order. What happens first?"
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var steps  = g.clamp(4 + (g.level >= 4 ? 1 : 0) + Math.max(0, g.boost), 4, 5);
+  var ROUNDS = 4;
+
+  var STORIES = [
+    { title: "Getting ready for the day", steps: [
+      { ic: "⏰", cap: "The alarm rings" }, { ic: "🚿", cap: "Have a wash" },
+      { ic: "👔", cap: "Get dressed" },     { ic: "🍳", cap: "Eat breakfast" },
+      { ic: "🚪", cap: "Leave the house" } ] },
+    { title: "Making a cup of tea", steps: [
+      { ic: "🫖", cap: "Fill the kettle" }, { ic: "♨️", cap: "Boil the water" },
+      { ic: "🍵", cap: "Add the tea" },     { ic: "🥛", cap: "Pour the milk" },
+      { ic: "😊", cap: "Enjoy the tea" } ] },
+    { title: "Cooking a meal", steps: [
+      { ic: "🛒", cap: "Buy the food" },    { ic: "🔪", cap: "Chop it up" },
+      { ic: "🍲", cap: "Cook the meal" },   { ic: "🍽️", cap: "Eat together" },
+      { ic: "🧽", cap: "Wash the dishes" } ] },
+    { title: "Planting a seed", steps: [
+      { ic: "🌰", cap: "Take a seed" },     { ic: "🕳️", cap: "Dig a hole" },
+      { ic: "💧", cap: "Water the soil" },  { ic: "🌱", cap: "A shoot appears" },
+      { ic: "🌻", cap: "The flower blooms" } ] },
+    { title: "Writing a letter", steps: [
+      { ic: "📝", cap: "Write the letter" },{ ic: "✉️", cap: "Fold it in" },
+      { ic: "📮", cap: "Post it" },         { ic: "🚚", cap: "It travels" },
+      { ic: "📬", cap: "It arrives" } ] },
+    { title: "A trip to the shop", steps: [
+      { ic: "📋", cap: "Write a list" },    { ic: "🚌", cap: "Take the bus" },
+      { ic: "🧺", cap: "Fill the basket" }, { ic: "💳", cap: "Pay at the till" },
+      { ic: "🏠", cap: "Carry it home" } ] },
+    { title: "Going for a walk", steps: [
+      { ic: "👟", cap: "Put shoes on" },    { ic: "🧥", cap: "Take a coat" },
+      { ic: "🚶", cap: "Walk in the park" },{ ic: "🪑", cap: "Rest on a bench" },
+      { ic: "🏡", cap: "Head back home" } ] },
+    { title: "Washing clothes", steps: [
+      { ic: "🧺", cap: "Gather the clothes" },{ ic: "🧼", cap: "Add the soap" },
+      { ic: "🌀", cap: "Run the machine" }, { ic: "🪢", cap: "Hang them out" },
+      { ic: "👕", cap: "Fold them away" } ] }
+  ];
+
+  var deck = g.shuffle(STORIES);
+  var round = 0, raw = 0, perfect = 0, hintsUsed = 0;
+  var story = null, placed = [], locked = false;
+
+  function build() {
+    g.stage.innerHTML = "";
+    g.stage.appendChild(Object.assign(g.el("p", "mb-prompt", ""), { id: "prompt" }));
+    g.stage.appendChild(Object.assign(g.el("p", "mb-sub", ""), { id: "sub" }));
+    g.stage.appendChild(Object.assign(g.el("div", "slots"), { id: "slots" }));
+    g.stage.appendChild(Object.assign(g.el("div", "pool"), { id: "pool" }));
+
+    var actions = g.el("div", "mb-actions");
+
+    var hint = g.el("button", "mb-btn ghost", "💡 Give me a hint");
+    hint.type = "button";
+    hint.id = "hintBtn";
+    hint.addEventListener("click", giveHint);
+    actions.appendChild(hint);
+
+    var undo = g.el("button", "mb-btn ghost", "↩ Undo last");
+    undo.type = "button";
+    undo.id = "undoBtn";
+    undo.addEventListener("click", undoLast);
+    actions.appendChild(undo);
+
+    var check = g.el("button", "mb-btn", "Check my story");
+    check.type = "button";
+    check.id = "checkBtn";
+    check.disabled = true;
+    check.addEventListener("click", check_);
+    actions.appendChild(check);
+
+    g.stage.appendChild(actions);
+  }
+
+  function ordinal(n) {
+    return ["1st", "2nd", "3rd", "4th", "5th"][n] || (n + 1) + "th";
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    locked = false;
+    placed = [];
+    g.setProgress("Story " + round + " of " + ROUNDS);
+    g.flash("");
+
+    var base = deck[(round - 1) % deck.length];
+    /* Take the first N steps so the story still reads in order. */
+    story = { title: base.title, steps: base.steps.slice(0, steps) };
+
+    document.getElementById("prompt").textContent = story.title;
+    document.getElementById("sub").textContent =
+      "Tap the pictures in the order they happen";
+
+    var slots = document.getElementById("slots");
+    slots.innerHTML = "";
+    for (var i = 0; i < steps; i++) {
+      var s = g.el("div", "slot");
+      s.appendChild(g.el("div", "pos", ordinal(i)));
+      s.appendChild(g.el("div", "ic", ""));
+      s.appendChild(g.el("div", "cap", ""));
+      slots.appendChild(s);
+    }
+
+    var pool = document.getElementById("pool");
+    pool.innerHTML = "";
+    g.shuffle(story.steps.map(function (s, i) {
+      return { step: s, index: i };
+    })).forEach(function (item) {
+      var b = g.el("button", "pcard");
+      b.type = "button";
+      b.appendChild(g.el("div", "ic", item.step.ic));
+      b.appendChild(g.el("div", "cap", item.step.cap));
+      b.setAttribute("aria-label", item.step.cap);
+      b.addEventListener("click", function () { place(item, b); });
+      pool.appendChild(b);
+    });
+
+    document.getElementById("checkBtn").disabled = true;
+    g.say("Put these pictures in order. What happens first?");
+  }
+
+  function place(item, btn) {
+    if (locked || placed.length >= steps) return;
+    var slot = document.getElementById("slots").children[placed.length];
+    slot.querySelector(".ic").textContent = item.step.ic;
+    slot.querySelector(".cap").textContent = item.step.cap;
+    slot.classList.add("filled");
+
+    placed.push({ item: item, btn: btn });
+    btn.classList.add("used");
+    g.tone(560, 100);
+
+    document.getElementById("checkBtn").disabled = placed.length !== steps;
+  }
+
+  function undoLast() {
+    if (locked || !placed.length) return;
+    var last = placed.pop();
+    last.btn.classList.remove("used");
+    var slot = document.getElementById("slots").children[placed.length];
+    slot.querySelector(".ic").textContent = "";
+    slot.querySelector(".cap").textContent = "";
+    slot.classList.remove("filled");
+    document.getElementById("checkBtn").disabled = true;
+  }
+
+  function giveHint() {
+    if (locked) return;
+    hintsUsed++;
+    var nextIdx = placed.length;
+    if (nextIdx >= steps) { g.flash("The story is already full — check it", "info"); return; }
+    var wanted = story.steps[nextIdx];
+    g.flash("What happens " + (nextIdx === 0 ? "first" : "next") +
+            "? Look for: " + wanted.cap, "info");
+    g.say("What happens " + (nextIdx === 0 ? "first" : "next") + "?");
+  }
+
+  function check_() {
+    if (locked) return;
+    locked = true;
+
+    var slots = document.getElementById("slots").children;
+    var rightPlaces = 0;
+    placed.forEach(function (p, i) {
+      var ok = p.item.index === i;
+      if (ok) rightPlaces++;
+      slots[i].classList.add(ok ? "ok" : "bad");
+    });
+
+    var misplaced = steps - rightPlaces;
+
+    if (misplaced === 0) {
+      perfect++;
+      raw += 25;                         /* spec: 25 per correct story */
+      g.addPoints(25);
+      g.flash("Perfect story! Well done.", "ok");
+      g.say("Perfect story. Well done.");
+    } else if (misplaced <= 2) {
+      raw += 10;                         /* spec: partial credit */
+      g.addPoints(10);
+      g.flash("Nearly — " + rightPlaces + " of " + steps + " in the right place", "no");
+    } else {
+      g.flash("The right order was: " +
+              story.steps.map(function (s) { return s.cap; }).join(", "), "no");
+    }
+
+    setTimeout(function () {
+      Array.prototype.forEach.call(slots, function (s) {
+        s.classList.remove("ok", "bad");
+      });
+      nextRound();
+    }, 2400);
+  }
+
+  function endGame() {
+    var accuracy = Math.round((perfect / ROUNDS) * 100);
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        stories_completed: ROUNDS,
+        perfect_sequences: perfect,
+        steps_per_story: steps,
+        hints_used: hintsUsed
+      },
+      tooEasy: accuracy === 100 && hintsUsed === 0,
+      tooHard: hintsUsed > 2 || accuracy < 50,
+      verdict: accuracy === 100 ? "Every story in order!" :
+               accuracy >= 80 ? "Well sequenced!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

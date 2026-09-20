@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slow Motion Spotter | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .target{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    background:var(--amber-100);border:2px solid var(--amber-500);
+    border-radius:16px;padding:14px;margin:0 auto 18px;max-width:230px;
+  }
+  .target .icon{font-size:64px;line-height:1}
+  .target .cap{font-size:16px;font-weight:600;color:var(--amber-600)}
+  .target.gone{visibility:hidden}
+  .options{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .opt{
+    width:150px;height:150px;border-radius:18px;font-size:70px;
+    border:2px solid var(--line);background:var(--card);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .1s ease,border-color .15s ease,background .15s ease;
+  }
+  .opt:active{transform:scale(.95)}
+  .opt.correct{border-color:var(--green-500);background:var(--green-100)}
+  .opt.wrong{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){
+    .opt{width:104px;height:104px;font-size:50px}
+    .target .icon{font-size:52px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "slow-spotter",
+    name: "Slow Motion Spotter",
+    difficulty: "easy",
+    maxRaw: 200,
+    howTo: "A picture appears at the top. Find the same picture in the row " +
+           "below and tap it before the bar runs out.",
+    example: "If the top shows a red apple, tap the red apple below.",
+    voiceLine: "Find the matching picture and tap it."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var options   = g.clamp(3 + Math.floor((g.level - 1) / 2) + g.boost, 3, 5);
+  var limitMs   = g.clamp(5000 - (g.level - 1) * 400 - g.boost * 500, 2500, 5000);
+  var hideAfter = g.level >= 3 ? 2000 : 0;   /* 0 = target stays visible */
+  var ROUNDS    = 10;
+
+  var POOL = [
+    { icon: "🍎", name: "red apple" },   { icon: "🚙", name: "blue car" },
+    { icon: "🌻", name: "yellow flower" },{ icon: "🐟", name: "fish" },
+    { icon: "⚽", name: "football" },     { icon: "🍋", name: "lemon" },
+    { icon: "🐦", name: "bird" },        { icon: "🧢", name: "cap" },
+    { icon: "🥕", name: "carrot" },      { icon: "🍇", name: "grapes" },
+    { icon: "🪑", name: "chair" },       { icon: "🕰️", name: "clock" },
+    { icon: "🥚", name: "egg" },         { icon: "🧦", name: "sock" }
+  ];
+
+  var round = 0, correct = 0, raw = 0, responseTimes = [], roundStart = 0;
+  var locked = false;
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    var t = g.el("div", "target");
+    t.id = "target";
+    t.appendChild(g.el("div", "icon", ""));
+    t.appendChild(g.el("div", "cap", ""));
+    g.stage.appendChild(t);
+
+    var p = g.el("p", "mb-sub", "Tap the matching picture below");
+    p.id = "sub";
+    g.stage.appendChild(p);
+
+    var o = g.el("div", "options");
+    o.id = "options";
+    g.stage.appendChild(o);
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    locked = false;
+    g.setProgress(round + " of " + ROUNDS);
+    g.flash("");
+
+    var set = g.sample(POOL, options);
+    var answer = g.pick(set);
+
+    var t = document.getElementById("target");
+    t.classList.remove("gone");
+    t.querySelector(".icon").textContent = answer.icon;
+    t.querySelector(".cap").textContent = "Find this: " + answer.name;
+
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    g.shuffle(set).forEach(function (item) {
+      var b = g.el("button", "opt", item.icon);
+      b.type = "button";
+      b.setAttribute("aria-label", item.name);
+      b.addEventListener("click", function () { answerRound(b, item, answer); });
+      box.appendChild(b);
+    });
+
+    g.say("Find the " + answer.name);
+
+    if (hideAfter) {
+      setTimeout(function () {
+        if (!locked) t.classList.add("gone");
+      }, hideAfter);
+    }
+
+    roundStart = Date.now();
+    g.countdown(limitMs, function () {
+      if (locked) return;
+      locked = true;
+      responseTimes.push(limitMs / 1000);
+      g.flash("Time's up — the answer was the " + answer.name, "no");
+      revealAnswer(answer);
+      setTimeout(nextRound, 1400);
+    });
+  }
+
+  function revealAnswer(answer) {
+    var t = document.getElementById("target");
+    t.classList.remove("gone");
+    Array.prototype.forEach.call(
+      document.getElementById("options").children,
+      function (b) {
+        if (b.getAttribute("aria-label") === answer.name) b.classList.add("correct");
+      });
+  }
+
+  function answerRound(btn, item, answer) {
+    if (locked) return;
+    locked = true;
+    g.cancelCountdown();
+
+    var secs = (Date.now() - roundStart) / 1000;
+    responseTimes.push(secs);
+
+    if (item.name === answer.name) {
+      correct++;
+      var pts = 20 + (secs < 2 ? 5 : 0);   /* spec: +5 time bonus under 2s */
+      raw += pts;
+      g.addPoints(pts);
+      btn.classList.add("correct");
+      g.flash(secs < 2 ? "Correct — and quick! +" + pts : "Correct! +" + pts, "ok");
+    } else {
+      btn.classList.add("wrong");
+      revealAnswer(answer);
+      g.flash("That was the " + item.name + ". You wanted the " + answer.name + ".", "no");
+    }
+
+    setTimeout(nextRound, 1300);
+  }
+
+  function endGame() {
+    var accuracy = Math.round((correct / ROUNDS) * 100);
+    var avg = responseTimes.length
+      ? responseTimes.reduce(function (a, b) { return a + b; }, 0) / responseTimes.length
+      : 0;
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        correct_count: correct,
+        rounds: ROUNDS,
+        avg_response_time: Number(avg.toFixed(2)),
+        options_per_round: options
+      },
+      tooEasy: accuracy > 90 && avg < 2,
+      tooHard: avg > 4 || accuracy < 60,
+      verdict: accuracy === 100 ? "Sharp eyes!" :
+               accuracy >= 80 ? "Well spotted!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

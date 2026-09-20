@@ -161,16 +161,21 @@
   }
 
   var GAME_META = {
-    "Word Garden":  { emoji: "🌱", category: "Language", key: "word" },
-    "Memory Match": { emoji: "🧠", category: "Memory",   key: "memory" },
-    "Picture Path": { emoji: "🔍", category: "Focus",    key: "picture" },
-    "Color Clash":  { emoji: "🎨", category: "Executive Function", key: "color" },
-    "Sort & Match": { emoji: "🧺", category: "Reasoning", key: "category" },
-    "Pattern Recall": { emoji: "🔢", category: "Working Memory", key: "sequence" },
-    "Letter Scramble": { emoji: "🔤", category: "Language", key: "scramble" },
-    "Candy Match": { emoji: "🍬", category: "Cognitive", key: "candy" },
-    "Odd One Out": { emoji: "🟡", category: "Reasoning", key: "odd" },
-    "Chess": { emoji: "♟️", category: "Planning", key: "chess" }
+    "Sequence Recall": { emoji: "🎨", category: "Working Memory", key: "sequence-recall" },
+    "Memory Grid": { emoji: "🃏", category: "Episodic Memory", key: "memory-grid" },
+    "Slow Motion Spotter": { emoji: "🔍", category: "Attention", key: "slow-spotter" },
+    "Number Ladder": { emoji: "🔢", category: "Sequencing", key: "number-ladder" },
+    "Sound Story": { emoji: "👂", category: "Auditory Memory", key: "sound-story" },
+    "Pattern Master": { emoji: "🔷", category: "Reasoning", key: "pattern-master" },
+    "Location Link": { emoji: "🏠", category: "Spatial Memory", key: "location-link" },
+    "Speed Reaction": { emoji: "⚡", category: "Speed of Processing", key: "speed-reaction" },
+    "Story Sequence": { emoji: "📖", category: "Narrative Memory", key: "story-sequence" },
+    "Word Association": { emoji: "💬", category: "Semantic Memory", key: "word-association" },
+    "Dual Task Master": { emoji: "🎯", category: "Divided Attention", key: "dual-task-master" },
+    "Advanced Location Link": { emoji: "🗺️", category: "Spatial Memory", key: "advanced-location-link" },
+    "Advanced Speed Reaction": { emoji: "💨", category: "Speed of Processing", key: "speed-perception" },
+    "Logic Puzzle": { emoji: "🧩", category: "Complex Reasoning", key: "logic-puzzle" },
+    "Mixed Challenge": { emoji: "🌟", category: "Integrated Thinking", key: "mixed-challenge" }
   };
 
   function gameMeta(name) {

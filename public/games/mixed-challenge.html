@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mixed Challenge | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .phase{
+    display:flex;gap:8px;justify-content:center;margin:0 0 16px;flex-wrap:wrap;
+  }
+  .phase span{
+    font-size:15px;font-weight:600;padding:7px 14px;border-radius:999px;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--ink-faint);
+  }
+  .phase span.on{background:var(--teal-100);border-color:var(--teal-500);color:var(--teal-700)}
+  .phase span.done{background:var(--green-100);border-color:var(--green-500);color:var(--green-700)}
+
+  .strip{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0 0 18px;
+         min-height:96px;align-items:center}
+  .glyph{
+    width:84px;height:84px;border-radius:14px;border:2px solid var(--line);
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+    font-size:42px;
+  }
+  .glyph.hot{border-color:var(--amber-500);box-shadow:0 0 0 5px rgba(222,154,52,.28)}
+  .glyph.q{border-style:dashed;background:var(--amber-100);color:var(--amber-600)}
+
+  .picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+         gap:10px;max-width:420px;margin:0 auto}
+  .pick{
+    height:88px;border-radius:14px;border:2px solid var(--line);background:var(--card);
+    cursor:pointer;font-size:40px;display:flex;align-items:center;justify-content:center;
+  }
+  .pick:active{transform:scale(.95)}
+  .pick.correct{border-color:var(--green-500);background:var(--green-100)}
+  .pick.wrong{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){
+    .glyph{width:62px;height:62px;font-size:32px}
+    .pick{height:72px;font-size:32px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "mixed-challenge",
+    name: "Mixed Challenge",
+    difficulty: "hard",
+    maxRaw: 100,
+    howTo: "Three rounds, each with two jobs. First memorise a short run of " +
+           "symbols. Then, under a time limit, work out which symbol the " +
+           "pattern needs next — and pick it before the bar runs out.",
+    example: "Memorise 🔺🔵🔺🔵, then quickly choose what comes fifth.",
+    voiceLine: "Memorise the symbols, then choose what comes next before time runs out."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var runLength = g.clamp(4 + Math.floor((g.level - 1) / 2) + g.boost, 4, 6);
+  var studyMs   = g.clamp(1100 - (g.level - 1) * 100, 600, 1100);
+  var answerMs  = g.clamp(6000 - (g.level - 1) * 600 - g.boost * 600, 3000, 6000);
+  var ROUNDS    = 3;
+
+  var GLYPHS = ["🔺", "🔵", "🟨", "🟩", "🟪", "🔶", "⬛", "🔻"];
+
+  var round = 0, raw = 0, memoryHits = 0, speedHits = 0, responseTimes = [];
+  var locked = false, current = null, answerStart = 0;
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    var ph = g.el("div", "phase");
+    ph.innerHTML = '<span id="p1">1 · Memorise</span>' +
+                   '<span id="p2">2 · Recall</span>' +
+                   '<span id="p3">3 · Beat the clock</span>';
+    g.stage.appendChild(ph);
+
+    g.stage.appendChild(Object.assign(g.el("p", "mb-prompt", ""), { id: "prompt" }));
+    g.stage.appendChild(Object.assign(g.el("div", "strip"), { id: "strip" }));
+    g.stage.appendChild(Object.assign(g.el("p", "mb-sub", ""), { id: "sub" }));
+    g.stage.appendChild(Object.assign(g.el("div", "picks"), { id: "picks" }));
+  }
+
+  function setPhase(n) {
+    ["p1", "p2", "p3"].forEach(function (id, i) {
+      var e = document.getElementById(id);
+      e.classList.toggle("on", i === n);
+      e.classList.toggle("done", i < n);
+    });
+  }
+
+  function setPrompt(t) { document.getElementById("prompt").textContent = t; }
+  function setSub(t) { document.getElementById("sub").textContent = t; }
+
+  function clearPicks() { document.getElementById("picks").innerHTML = ""; }
+
+  /* ---------------------------------------------------- round: phase one */
+
+  async function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    locked = false;
+    g.setProgress("Round " + round + " of " + ROUNDS);
+    g.flash("");
+    clearPicks();
+
+    /* Build a two-glyph alternating run; the 'next' item continues it. */
+    var pair = g.sample(GLYPHS, 2);
+    var run = [];
+    for (var i = 0; i < runLength; i++) run.push(pair[i % 2]);
+    var nextGlyph = pair[runLength % 2];
+
+    /* One position in the run is the one we will ask about from memory. */
+    var probeIndex = Math.floor(Math.random() * runLength);
+
+    current = { run: run, nextGlyph: nextGlyph, probeIndex: probeIndex, pair: pair };
+
+    setPhase(0);
+    setPrompt("Memorise this run");
+    setSub("Watch each symbol");
+    g.say("Memorise these symbols.");
+
+    var strip = document.getElementById("strip");
+    strip.innerHTML = "";
+    var cells = run.map(function (glyph) {
+      var c = g.el("div", "glyph", glyph);
+      strip.appendChild(c);
+      return c;
+    });
+
+    /* Highlight each in turn so attention is guided. */
+    for (var k = 0; k < cells.length; k++) {
+      cells[k].classList.add("hot");
+      g.tone(520 + k * 40, 100);
+      await g.wait(studyMs);
+      cells[k].classList.remove("hot");
+    }
+
+    await g.wait(400);
+    memoryPhase();
+  }
+
+  /* ---------------------------------------------------- round: phase two */
+
+  function memoryPhase() {
+    setPhase(1);
+
+    var strip = document.getElementById("strip");
+    strip.innerHTML = "";
+    current.run.forEach(function (glyph, i) {
+      var c = g.el("div", "glyph" + (i === current.probeIndex ? " q" : ""),
+                   i === current.probeIndex ? "?" : glyph);
+      strip.appendChild(c);
+    });
+
+    setPrompt("Which symbol was in the gap?");
+    setSub("No time limit here — take a moment");
+    g.say("Which symbol was hidden?");
+
+    var answer = current.run[current.probeIndex];
+    showPicks(answer, function (btn, choice) {
+      if (choice === answer) {
+        memoryHits++;
+        raw += Math.round(50 / ROUNDS);   /* memory half = 50 points */
+        g.addPoints(Math.round(50 / ROUNDS));
+        btn.classList.add("correct");
+        g.flash("Correct — good recall", "ok");
+      } else {
+        btn.classList.add("wrong");
+        markCorrect(answer);
+        g.flash("It was " + answer, "no");
+      }
+      setTimeout(speedPhase, 1400);
+    });
+  }
+
+  /* -------------------------------------------------- round: phase three */
+
+  function speedPhase() {
+    setPhase(2);
+    locked = false;
+    clearPicks();
+
+    var strip = document.getElementById("strip");
+    strip.innerHTML = "";
+    current.run.forEach(function (glyph) {
+      strip.appendChild(g.el("div", "glyph", glyph));
+    });
+    strip.appendChild(g.el("div", "glyph q", "?"));
+
+    setPrompt("What comes next? Be quick!");
+    setSub("Choose before the bar empties");
+    g.say("What comes next? Be quick.");
+
+    answerStart = Date.now();
+    var answer = current.nextGlyph;
+
+    showPicks(answer, function (btn, choice) {
+      g.cancelCountdown();
+      responseTimes.push((Date.now() - answerStart) / 1000);
+
+      if (choice === answer) {
+        speedHits++;
+        raw += Math.round(50 / ROUNDS);   /* speed half = 50 points */
+        g.addPoints(Math.round(50 / ROUNDS));
+        btn.classList.add("correct");
+        g.flash("Correct and fast!", "ok");
+      } else {
+        btn.classList.add("wrong");
+        markCorrect(answer);
+        g.flash("The pattern needed " + answer, "no");
+      }
+      setTimeout(nextRound, 1500);
+    });
+
+    g.countdown(answerMs, function () {
+      if (locked) return;
+      locked = true;
+      responseTimes.push(answerMs / 1000);
+      markCorrect(answer);
+      g.flash("Time's up — it was " + answer, "no");
+      setTimeout(nextRound, 1500);
+    });
+  }
+
+  /* ------------------------------------------------------------ helpers */
+
+  function showPicks(answer, onChoose) {
+    var decoys = g.sample(GLYPHS.filter(function (x) { return x !== answer; }), 5);
+    var options = g.shuffle([answer].concat(decoys.slice(0, 5)));
+
+    var box = document.getElementById("picks");
+    box.innerHTML = "";
+    options.forEach(function (glyph) {
+      var b = g.el("button", "pick", glyph);
+      b.type = "button";
+      b.setAttribute("aria-label", "symbol option");
+      b.addEventListener("click", function () {
+        if (locked) return;
+        locked = true;
+        onChoose(b, glyph);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function markCorrect(answer) {
+    Array.prototype.forEach.call(document.getElementById("picks").children,
+      function (b) { if (b.textContent === answer) b.classList.add("correct"); });
+  }
+
+  function endGame() {
+    setPhase(3);
+    var total = ROUNDS * 2;
+    var accuracy = Math.round(((memoryHits + speedHits) / total) * 100);
+    var avg = responseTimes.length
+      ? responseTimes.reduce(function (a, b) { return a + b; }, 0) / responseTimes.length
+      : 0;
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        memory_correct: memoryHits,
+        speed_correct: speedHits,
+        rounds: ROUNDS,
+        run_length: runLength,
+        avg_speed_response: Number(avg.toFixed(2))
+      },
+      tooEasy: accuracy === 100 && avg < answerMs / 2000,
+      tooHard: accuracy < 55,
+      verdict: accuracy === 100 ? "Both halves mastered!" :
+               accuracy >= 80 ? "Strong all round!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

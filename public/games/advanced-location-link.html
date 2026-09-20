@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Location Link | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .objrow{display:flex;justify-content:center;min-height:118px;margin:0 0 16px}
+  .objchip{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    background:var(--amber-100);border:2px solid var(--amber-500);
+    border-radius:16px;padding:12px 22px;
+  }
+  .obj-icon{font-size:64px;line-height:1}
+  .obj-name{font-size:16px;font-weight:600;color:var(--amber-600)}
+  .locgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+           gap:12px;max-width:460px;margin:0 auto}
+  .loc{
+    height:130px;border-radius:16px;border:2px solid var(--line);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    font-family:var(--sans);color:var(--ink);
+    transition:transform .1s ease,border-color .2s ease,box-shadow .2s ease;
+  }
+  .loc:active{transform:scale(.97)}
+  .loc-icon{font-size:52px;line-height:1}
+  .loc-name{font-size:16px;font-weight:600}
+  .loc.spotlight{border-color:var(--amber-500);box-shadow:0 0 0 5px rgba(222,154,52,.3)}
+  .loc.correct{border-color:var(--green-500);box-shadow:0 0 0 5px rgba(62,155,110,.3)}
+  .loc.wrong{border-color:var(--red-600);box-shadow:0 0 0 5px rgba(179,69,58,.25)}
+  .loc.dim{opacity:.55}
+  .loc[disabled]{cursor:default}
+  @media(max-width:520px){
+    .loc{height:104px}.loc-icon{font-size:40px}
+    .obj-icon{font-size:50px}.objrow{min-height:100px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script src="location-link-core.js"></script>
+<script>MBLocationLink.start({ variant: "hard" });</script>
+</body>
+</html>

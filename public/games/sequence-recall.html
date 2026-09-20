@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sequence Recall | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+        max-width:380px;margin:0 auto}
+  .pad{height:120px;border-radius:18px;border:3px solid rgba(0,0,0,.12);
+       cursor:pointer;transition:transform .08s ease,filter .12s ease;
+       display:flex;align-items:center;justify-content:center;
+       font-size:36px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .pad:active{transform:scale(.96)}
+  .pad.lit{filter:brightness(1.75);transform:scale(1.04);
+           box-shadow:0 0 0 5px rgba(255,255,255,.7) inset}
+  .pad[disabled]{cursor:default}
+  @media(max-width:420px){.pad{height:96px;font-size:30px}}
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "sequence-recall",
+    name: "Sequence Recall",
+    difficulty: "easy",
+    maxRaw: 105,
+    howTo: "Watch the buttons light up one at a time. When the lights stop, " +
+           "tap the same buttons in the same order.",
+    example: "If blue lights up, then red, then yellow — tap blue, red, yellow.",
+    voiceLine: "Watch the buttons light up, then tap them in the same order."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  /* Level 1-5 lengthens the sequence; the hub's boost nudges it further. */
+  var startLen = g.clamp(3 + Math.floor((g.level - 1) / 2) + g.boost, 3, 7);
+  var gapMs    = g.clamp(2000 - (g.level - 1) * 150 - g.boost * 200, 900, 2000);
+  var litMs    = Math.round(gapMs * 0.55);
+  var ROUNDS   = 5;
+
+  var PADS = [
+    { name: "blue",   color: "#2F6FB0", icon: "●", freq: 392 },
+    { name: "red",    color: "#B3453A", icon: "■", freq: 523 },
+    { name: "yellow", color: "#DE9A34", icon: "▲", freq: 659 },
+    { name: "green",  color: "#3E9B6E", icon: "♦", freq: 784 }
+  ];
+
+  var round = 0, raw = 0, correctRounds = 0, mistakes = 0;
+  var sequence = [], entered = 0, accepting = false;
+
+  var padEls = [];
+
+  function buildBoard() {
+    g.stage.innerHTML = "";
+
+    var prompt = g.el("p", "mb-prompt", "Watch closely…");
+    prompt.id = "prompt";
+    g.stage.appendChild(prompt);
+
+    var sub = g.el("p", "mb-sub", "");
+    sub.id = "sub";
+    g.stage.appendChild(sub);
+
+    var wrap = g.el("div", "pads");
+    padEls = PADS.map(function (p, i) {
+      var b = g.el("button", "pad", p.icon);
+      b.type = "button";
+      b.style.background = p.color;
+      b.setAttribute("aria-label", p.name);
+      b.disabled = true;
+      b.addEventListener("click", function () { onTap(i); });
+      wrap.appendChild(b);
+      return b;
+    });
+    g.stage.appendChild(wrap);
+  }
+
+  function setPrompt(text) { document.getElementById("prompt").textContent = text; }
+  function setSub(text) { document.getElementById("sub").textContent = text; }
+
+  function lock(state) {
+    accepting = !state;
+    padEls.forEach(function (b) { b.disabled = state; });
+  }
+
+  async function playSequence() {
+    lock(true);
+    setPrompt("Watch closely…");
+    setSub("");
+    await g.wait(700);
+
+    for (var i = 0; i < sequence.length; i++) {
+      var idx = sequence[i];
+      padEls[idx].classList.add("lit");
+      g.tone(PADS[idx].freq, litMs);
+      await g.wait(litMs);
+      padEls[idx].classList.remove("lit");
+      await g.wait(gapMs - litMs);
+    }
+
+    entered = 0;
+    lock(false);
+    setPrompt("Now it's your turn");
+    setSub("0 of " + sequence.length);
+    g.say("Now it's your turn. Tap the buttons in order.");
+  }
+
+  function onTap(idx) {
+    if (!accepting) return;
+
+    padEls[idx].classList.add("lit");
+    g.tone(PADS[idx].freq, 140);
+    setTimeout(function () { padEls[idx].classList.remove("lit"); }, 160);
+
+    if (sequence[entered] === idx) {
+      entered++;
+      setSub(entered + " of " + sequence.length);
+
+      if (entered === sequence.length) {
+        lock(true);
+        correctRounds++;
+        raw += 20;                       /* 5 rounds x 20 = 100 */
+        g.addPoints(20);
+        g.flash("Correct! Nice memory.", "ok");
+        setTimeout(nextRound, 1100);
+      }
+    } else {
+      mistakes++;
+      raw = Math.max(0, raw - 10);       /* spec: -10 per mistake */
+      g.addPoints(-10);
+      lock(true);
+      g.flash("Not quite — watch it once more.", "no");
+      g.say("Not quite. Watch it again.");
+      setTimeout(playSequence, 1400);
+    }
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    g.setProgress("Round " + round + " of " + ROUNDS);
+    g.flash("");
+
+    /* Sequence grows by one item per round, capped at 7. */
+    var len = Math.min(startLen + (round - 1), 7);
+    sequence = [];
+    for (var i = 0; i < len; i++) sequence.push(Math.floor(Math.random() * 4));
+
+    playSequence();
+  }
+
+  function endGame() {
+    var seconds = g.elapsed();
+    /* Bonus: +5 if all five rounds finished inside two minutes. */
+    if (correctRounds === ROUNDS && seconds < 120) { raw += 5; g.addPoints(5); }
+
+    var accuracy = Math.round((correctRounds / ROUNDS) * 100);
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        sequences_completed: correctRounds,
+        mistakes: mistakes,
+        longest_sequence: Math.min(startLen + ROUNDS - 1, 7)
+      },
+      tooEasy: accuracy >= 85 && mistakes === 0,
+      tooHard: accuracy < 60,
+      verdict: accuracy === 100 ? "Perfect recall!" :
+               accuracy >= 80 ? "Well done!" : "Keep practising"
+    });
+  }
+
+  g.intro(function () {
+    buildBoard();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

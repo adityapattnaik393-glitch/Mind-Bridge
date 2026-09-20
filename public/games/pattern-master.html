@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Master | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .seq{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:0 0 20px}
+  .cellbox{
+    width:100px;height:100px;border-radius:14px;border:2px solid var(--line);
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+  }
+  .cellbox.q{border-style:dashed;background:var(--amber-100);
+             border-color:var(--amber-500);font-size:44px;color:var(--amber-600)}
+  .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+           gap:12px;max-width:420px;margin:0 auto}
+  .optbox{
+    height:110px;border-radius:14px;border:2px solid var(--line);
+    background:var(--card);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .optbox:active{transform:scale(.96)}
+  .optbox.correct{border-color:var(--green-500);background:var(--green-100)}
+  .optbox.wrong{border-color:var(--red-600);background:var(--red-100)}
+  @media(max-width:520px){
+    .cellbox{width:68px;height:68px}
+    .optbox{height:88px}
+  }
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "pattern-master",
+    name: "Pattern Master",
+    difficulty: "medium",
+    maxRaw: 100,
+    howTo: "Look at the row of shapes. They follow a rule. Work out what " +
+           "should come next and tap it from the four choices.",
+    example: "Circle, square, circle, square — the next one is a circle.",
+    voiceLine: "Look at the pattern and choose what comes next."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  /* Complexity 1 = one rule, 2 = two rules, 3 = three rules combined. */
+  var complexity = g.clamp(1 + Math.floor((g.level - 1) / 2) + g.boost, 1, 3);
+  var ROUNDS = 4;
+
+  var SHAPES  = ["circle", "square", "triangle", "diamond"];
+  var COLORS  = ["#2F6FB0", "#B3453A", "#DE9A34", "#3E9B6E"];
+  var SIZES   = [46, 72, 96];
+
+  var round = 0, correct = 0, raw = 0;
+  var locked = false;
+
+  /* Draw a shape as inline SVG so nothing is downloaded. */
+  function shapeSvg(spec) {
+    var s = spec.size, half = s / 2, c = spec.color;
+    var body;
+    if (spec.shape === "circle") {
+      body = '<circle cx="' + half + '" cy="' + half + '" r="' + (half - 3) + '" fill="' + c + '"/>';
+    } else if (spec.shape === "square") {
+      body = '<rect x="3" y="3" width="' + (s - 6) + '" height="' + (s - 6) +
+             '" rx="6" fill="' + c + '"/>';
+    } else if (spec.shape === "triangle") {
+      body = '<polygon points="' + half + ',4 ' + (s - 4) + ',' + (s - 5) + ' 4,' + (s - 5) +
+             '" fill="' + c + '"/>';
+    } else {
+      body = '<polygon points="' + half + ',3 ' + (s - 3) + ',' + half + ' ' + half + ',' +
+             (s - 3) + ' 3,' + half + '" fill="' + c + '"/>';
+    }
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s +
+           '" role="img" aria-label="' + describe(spec) + '" ' +
+           'style="transform:rotate(' + (spec.rot || 0) + 'deg)">' + body + '</svg>';
+  }
+
+  function describe(spec) {
+    var names = { "#2F6FB0": "blue", "#B3453A": "red", "#DE9A34": "yellow", "#3E9B6E": "green" };
+    var size = spec.size === SIZES[0] ? "small" : (spec.size === SIZES[2] ? "large" : "medium");
+    return size + " " + names[spec.color] + " " + spec.shape;
+  }
+
+  function same(a, b) {
+    return a.shape === b.shape && a.color === b.color &&
+           a.size === b.size && (a.rot || 0) === (b.rot || 0);
+  }
+
+  /* Build a 5-item run from cycling rules; item 5 is the answer. */
+  function makePattern() {
+    var shapes = g.sample(SHAPES, 2);
+    var colors = g.sample(COLORS, 2);
+
+    var shapeCycle = complexity >= 1 ? shapes : [shapes[0]];
+    var colorCycle = complexity >= 2 ? colors : [colors[0]];
+    var sizeCycle  = complexity >= 3 ? [SIZES[0], SIZES[2]] : [SIZES[1]];
+    var rotCycle   = complexity >= 3 ? [0, 45] : [0];
+
+    var run = [];
+    for (var i = 0; i < 5; i++) {
+      run.push({
+        shape: shapeCycle[i % shapeCycle.length],
+        color: colorCycle[i % colorCycle.length],
+        size: sizeCycle[i % sizeCycle.length],
+        rot: rotCycle[i % rotCycle.length]
+      });
+    }
+
+    var answer = run[4];
+    var shown = run.slice(0, 4);
+
+    /* Distractors: change exactly one attribute so each is plausible. */
+    var wrongs = [];
+    var variants = [
+      { shape: g.pick(SHAPES.filter(function (s) { return s !== answer.shape; })) },
+      { color: g.pick(COLORS.filter(function (c) { return c !== answer.color; })) },
+      { size: g.pick(SIZES.filter(function (s) { return s !== answer.size; })) },
+      { rot: (answer.rot || 0) === 0 ? 45 : 0 }
+    ];
+    g.shuffle(variants).forEach(function (v) {
+      if (wrongs.length >= 3) return;
+      var cand = Object.assign({}, answer, v);
+      var clash = same(cand, answer) || wrongs.some(function (w) { return same(w, cand); });
+      if (!clash) wrongs.push(cand);
+    });
+    /* Guarantee three distractors even if the variants collided. */
+    while (wrongs.length < 3) {
+      var filler = {
+        shape: g.pick(SHAPES), color: g.pick(COLORS),
+        size: g.pick(sizeCycle.concat(SIZES[1])), rot: g.pick(rotCycle.concat(0))
+      };
+      if (!same(filler, answer) && !wrongs.some(function (w) { return same(w, filler); })) {
+        wrongs.push(filler);
+      }
+    }
+
+    var rule = complexity === 1 ? "The shapes take turns."
+             : complexity === 2 ? "The shapes and the colours both take turns."
+             : "The shape, the colour and the size all take turns.";
+
+    return { shown: shown, answer: answer, options: g.shuffle(wrongs.concat([answer])), rule: rule };
+  }
+
+  function build() {
+    g.stage.innerHTML = "";
+    g.stage.appendChild(Object.assign(g.el("p", "mb-prompt", "What comes next?"), { id: "prompt" }));
+    g.stage.appendChild(Object.assign(g.el("div", "seq"), { id: "seq" }));
+    g.stage.appendChild(Object.assign(g.el("p", "mb-sub", "Choose the missing shape"), { id: "sub" }));
+    g.stage.appendChild(Object.assign(g.el("div", "options"), { id: "options" }));
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    locked = false;
+    g.setProgress(round + " of " + ROUNDS + " patterns");
+    g.flash("");
+
+    var p = makePattern();
+
+    var seq = document.getElementById("seq");
+    seq.innerHTML = "";
+    p.shown.forEach(function (spec) {
+      var box = g.el("div", "cellbox");
+      box.innerHTML = shapeSvg(spec);
+      seq.appendChild(box);
+    });
+    var q = g.el("div", "cellbox q", "?");
+    seq.appendChild(q);
+
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    p.options.forEach(function (spec) {
+      var b = g.el("button", "optbox");
+      b.type = "button";
+      b.innerHTML = shapeSvg(spec);
+      b.setAttribute("aria-label", describe(spec));
+      b.addEventListener("click", function () { answer(b, spec, p); });
+      box.appendChild(b);
+    });
+
+    g.say("Look at the pattern. What comes next?");
+  }
+
+  function answer(btn, spec, p) {
+    if (locked) return;
+    locked = true;
+
+    if (same(spec, p.answer)) {
+      correct++;
+      raw += 25;                      /* spec: 25 points per pattern */
+      g.addPoints(25);
+      btn.classList.add("correct");
+      g.flash("That's right! " + p.rule, "ok");
+      g.say("That's right.");
+    } else {
+      btn.classList.add("wrong");
+      Array.prototype.forEach.call(document.getElementById("options").children,
+        function (b, i) {
+          if (same(p.options[i], p.answer)) b.classList.add("correct");
+        });
+      g.flash("Not this time. " + p.rule, "no");
+      g.say("Not this time.");
+    }
+
+    setTimeout(nextRound, 1900);
+  }
+
+  function endGame() {
+    var accuracy = Math.round((correct / ROUNDS) * 100);
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        patterns_solved: correct,
+        patterns_total: ROUNDS,
+        complexity_level: complexity
+      },
+      tooEasy: accuracy > 85,
+      tooHard: accuracy < 60,
+      verdict: accuracy === 100 ? "Sharp reasoning!" :
+               accuracy >= 80 ? "Well worked out!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>

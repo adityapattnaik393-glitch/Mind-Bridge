@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Story | MindBridge</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .speaker{
+    width:140px;height:140px;border-radius:50%;margin:0 auto 14px;display:flex;
+    align-items:center;justify-content:center;font-size:62px;cursor:pointer;
+    background:var(--teal-100);border:3px solid var(--teal-500);color:var(--teal-700);
+  }
+  .speaker:active{transform:scale(.96)}
+  .speaker.playing{animation:pulse 1s ease infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(30,122,108,.4)}
+                   50%{box-shadow:0 0 0 14px rgba(30,122,108,0)}}
+  .heard{
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:0 0 16px;
+    min-height:44px;
+  }
+  .slot{
+    min-width:104px;min-height:50px;border-radius:12px;padding:10px 14px;
+    border:2px dashed var(--line);background:var(--surface-2);
+    color:var(--ink-faint);font-weight:600;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .slot.filled{border-style:solid;border-color:var(--teal-500);
+               background:var(--teal-100);color:var(--teal-700)}
+  .choices{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .choice{
+    min-width:120px;min-height:56px;padding:12px 18px;border-radius:12px;
+    border:2px solid var(--line);background:var(--card);cursor:pointer;
+    font-size:19px;font-weight:600;font-family:var(--sans);color:var(--ink);
+  }
+  .choice:active{transform:scale(.96)}
+  .choice.correct{border-color:var(--green-500);background:var(--green-100)}
+  .choice.wrong{border-color:var(--red-600);background:var(--red-100)}
+  .choice.used{opacity:.4;pointer-events:none}
+</style>
+</head>
+<body>
+<script src="kit.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var g = MBGame.init({
+    id: "sound-story",
+    name: "Sound Story",
+    difficulty: "easy",
+    maxRaw: 110,
+    howTo: "Listen to the list of words. Then tap the words you heard, in the " +
+           "same order. You can replay the list whenever you need it.",
+    example: "If you hear apple, house, butterfly — tap apple, then house, then butterfly.",
+    voiceLine: "Listen carefully to the words, then tap the ones you heard."
+  });
+
+  /* ---------------------------------------------------------- parameters */
+  var wordCount = g.clamp(3 + Math.floor((g.level - 1) / 2) + g.boost, 3, 5);
+  var speechRate = g.level >= 4 ? 1.0 : (g.level >= 2 ? 0.92 : 0.82);
+  var ROUNDS = 4;
+
+  /* Distractors get harder by level: unrelated -> similar sound -> rhyming. */
+  var BANK = [
+    { word: "apple",  similar: "ample",  rhyme: "chapel" },
+    { word: "house",  similar: "mouse",  rhyme: "blouse" },
+    { word: "garden", similar: "harden", rhyme: "pardon" },
+    { word: "river",  similar: "liver",  rhyme: "shiver" },
+    { word: "candle", similar: "handle", rhyme: "sandal" },
+    { word: "letter", similar: "ladder", rhyme: "better" },
+    { word: "window", similar: "widow",  rhyme: "minnow" },
+    { word: "basket", similar: "casket", rhyme: "gasket" },
+    { word: "pillow", similar: "willow", rhyme: "billow" },
+    { word: "teacher",similar: "feature",rhyme: "creature" },
+    { word: "morning",similar: "mourning",rhyme: "warning" },
+    { word: "kitchen",similar: "kitten", rhyme: "mitten" }
+  ];
+
+  var round = 0, raw = 0, totalWords = 0, correctWords = 0;
+  var replays = 0, mistakes = 0;
+  var target = [], picked = [], locked = false;
+
+  function build() {
+    g.stage.innerHTML = "";
+
+    var prompt = g.el("p", "mb-prompt", "Listen to the words");
+    prompt.id = "prompt";
+    g.stage.appendChild(prompt);
+
+    var sp = g.el("div", "speaker", "🔊");
+    sp.id = "speaker";
+    sp.setAttribute("role", "button");
+    sp.setAttribute("tabindex", "0");
+    sp.setAttribute("aria-label", "Play the words again");
+    sp.addEventListener("click", replay);
+    sp.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); replay(); }
+    });
+    g.stage.appendChild(sp);
+
+    var sub = g.el("p", "mb-sub", "Tap the speaker to hear the words again");
+    sub.id = "sub";
+    g.stage.appendChild(sub);
+
+    var slots = g.el("div", "heard");
+    slots.id = "slots";
+    g.stage.appendChild(slots);
+
+    var ch = g.el("div", "choices");
+    ch.id = "choices";
+    g.stage.appendChild(ch);
+
+    var actions = g.el("div", "mb-actions");
+    var replayBtn = g.el("button", "mb-btn ghost", "🔁 Replay the words");
+    replayBtn.type = "button";
+    replayBtn.addEventListener("click", replay);
+    actions.appendChild(replayBtn);
+    g.stage.appendChild(actions);
+  }
+
+  /* Speak one word at a time, roughly one per second. */
+  function speakList(countReplay) {
+    if (countReplay) replays++;
+    var sp = document.getElementById("speaker");
+    sp.classList.add("playing");
+
+    var i = 0;
+    (function step() {
+      if (i >= target.length) {
+        sp.classList.remove("playing");
+        document.getElementById("prompt").textContent = "Now tap the words you heard";
+        return;
+      }
+      var w = target[i].word;
+      if (window.speechSynthesis) {
+        try {
+          var u = new SpeechSynthesisUtterance(w);
+          u.rate = speechRate;
+          window.speechSynthesis.speak(u);
+        } catch (e) { /* ignore */ }
+      }
+      /* Caption alongside audio, so the game still works without speech. */
+      document.getElementById("sub").textContent = "Hearing: " + w;
+      g.tone(560, 90);
+      i++;
+      setTimeout(step, 1150);
+    })();
+  }
+
+  function replay() {
+    if (locked) return;
+    speakList(true);
+  }
+
+  function nextRound() {
+    if (round >= ROUNDS) return endGame();
+    round++;
+    locked = false;
+    picked = [];
+    g.setProgress("Round " + round + " of " + ROUNDS);
+    g.flash("");
+
+    var set = g.sample(BANK, wordCount);
+    target = set;
+    totalWords += wordCount;
+
+    /* Build the option list: the real words plus level-appropriate decoys. */
+    var decoyCount = Math.max(2, wordCount - 1);
+    var decoys = g.sample(BANK.filter(function (b) {
+      return set.indexOf(b) === -1;
+    }), decoyCount).map(function (b) {
+      if (g.level >= 4) return b.rhyme;
+      if (g.level >= 2) return b.similar;
+      return b.word;
+    });
+
+    var options = g.shuffle(set.map(function (s) { return s.word; }).concat(decoys));
+
+    var slots = document.getElementById("slots");
+    slots.innerHTML = "";
+    for (var i = 0; i < wordCount; i++) {
+      slots.appendChild(g.el("div", "slot", "word " + (i + 1)));
+    }
+
+    var box = document.getElementById("choices");
+    box.innerHTML = "";
+    options.forEach(function (word) {
+      var b = g.el("button", "choice", word);
+      b.type = "button";
+      b.addEventListener("click", function () { choose(b, word); });
+      box.appendChild(b);
+    });
+
+    document.getElementById("prompt").textContent = "Listen to the words";
+    setTimeout(function () { speakList(false); }, 500);
+  }
+
+  function choose(btn, word) {
+    if (locked) return;
+
+    var expected = target[picked.length].word;
+
+    if (word === expected) {
+      picked.push(word);
+      btn.classList.add("used", "correct");
+      correctWords++;
+      raw += Math.round(100 / (ROUNDS * wordCount));
+      g.addPoints(Math.round(100 / (ROUNDS * wordCount)));
+
+      var slots = document.getElementById("slots").children;
+      slots[picked.length - 1].textContent = word;
+      slots[picked.length - 1].classList.add("filled");
+
+      g.flash("Correct! You heard " + word, "ok");
+      g.say("Correct. " + word);
+
+      if (picked.length === wordCount) {
+        locked = true;
+        setTimeout(nextRound, 1200);
+      }
+    } else {
+      mistakes++;
+      btn.classList.add("wrong");
+      g.flash("That one wasn't in the list — try another", "no");
+      setTimeout(function () { btn.classList.remove("wrong"); }, 700);
+    }
+  }
+
+  function endGame() {
+    var accuracy = Math.round((correctWords / Math.max(1, correctWords + mistakes)) * 100);
+
+    /* Compute the final points exactly, so a flawless run reaches 100.
+       The running total during play is only for the on-screen counter. */
+    raw = Math.round((correctWords / Math.max(1, totalWords)) * 100);
+    if (mistakes === 0) raw += 10;         /* spec: +10 for a clean run */
+
+    g.finish({
+      raw: raw,
+      accuracy: accuracy,
+      metrics: {
+        words_presented: totalWords,
+        words_correct: correctWords,
+        replays_used: replays,
+        mistakes: mistakes
+      },
+      tooEasy: accuracy > 90 && replays <= 1,
+      tooHard: replays > 5 || accuracy < 60,
+      verdict: mistakes === 0 ? "Perfect listening!" :
+               accuracy >= 80 ? "Well heard!" : "Good effort"
+    });
+  }
+
+  g.intro(function () {
+    build();
+    nextRound();
+  });
+})();
+</script>
+</body>
+</html>
