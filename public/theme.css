@@ -73,7 +73,7 @@ header.topbar {
   display: flex; align-items: center; justify-content: center;
   color: #000; box-shadow: var(--shadow);
 }
-.brand h1 { margin: 0; font-size: 21px; letter-spacing: .2px; }
+.brand h1 { margin: 0 0 0 auto; font-size: 21px; letter-spacing: .2px; }
 .brand p { margin: 1px 0 0; font-family: var(--sans); font-size: 12.5px; color: var(--ink-soft); }
 
 .top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
