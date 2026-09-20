@@ -1317,7 +1317,7 @@ font-size: 30px;
 
 /* Warm + cheerful patient greeting */
 .hero {
-  background: linear-gradient(135deg, #8FC9A3 0%, #F2C6A8 100%) !important;
+  background: var(--theme-gradient) !important;
 }
 
 .hero #greetTime {
